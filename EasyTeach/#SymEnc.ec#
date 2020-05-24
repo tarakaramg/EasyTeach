@@ -9,14 +9,25 @@ prover ["Z3"].  (* no SMT solvers *)
 
 require import AllCore Distr DBool.
 require import Cyclic_group_prime.
+require import Prime_field.
+
+
 
 (* theory parameters *)
+
+
+op ( ** ): group -> group -> group.
+
+op dgf_q: gf_q distr.
+
 
 type key.  (* encryption keys *)
 
 type text.  (* plaintexts *)
 
 type cipher.  (* ciphertexts *)
+
+op hash: gf_q -> gf_q.
 
 op ciph_def : cipher.  (* default ciphertext *)
 
@@ -39,7 +50,7 @@ op limit_post : {int | 0 <= limit_post} as ge0_limit_post.
 
 module type ENC = {
   (* key generation *)
-  proc key_gen() : key
+  proc key_gen() : gf_q
 
   (* encryption *)
   proc enc(k : key, x : text) : cipher
@@ -48,6 +59,34 @@ module type ENC = {
   proc dec(k : key, c : cipher) : text
 }.
 
+module Enc : ENC = {
+
+
+  proc key_gen(): gf_q = {
+  var x : gf_q; var g:group;
+    x <$dgf_q;
+    return (hash(x));
+  }
+
+
+  proc enc(k : key, x : text) : cipher ={
+      var y : cipher;
+      return y;
+  }
+
+      (* decryption *)
+
+      proc dec(k : key, c : cipher) : text ={
+
+      var z : text;
+      return z;
+    
+
+
+  }
+
+
+}.
 (* module for checking correctness of encryption, parameterized
    by encryption scheme
 
@@ -87,12 +126,10 @@ module EncO (Enc : ENC) : EO = {
   var key : key
   var ctr_pre : int
   var ctr_post : int
-  var gpr: group
 
   proc init() : unit = {
     key <@ Enc.key_gen();
     ctr_pre <- 0; ctr_post <- 0;
-    gpr <$ dgroup;
   }
 
   proc enc_pre(x : text) : cipher = {
