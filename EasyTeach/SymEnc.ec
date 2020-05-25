@@ -7,24 +7,24 @@
 
 prover ["Z3"].  (* no SMT solvers *)
 
-require import AllCore Distr DBool.
+require import AllCore Distr DBool FSet SmtMap.
 require import Cyclic_group_prime.
 import Dgroup.
 require import Prime_field.
-require import PseudoRandFun.
 
 (* theory parameters *)
 
 
 type key.  (* encryption keys *)
- (* plaintexts *)
+  (* plaintexts *)
+type  text.
 const zero:text.
 
-type cipher.  (* ciphertexts *)
+type cipher = group*text.  (* ciphertexts *)
 
 
 op ( ++ ) : text -> text -> text.
-op group_text: group -> text.
+op dtext : text distr.
 
 op ciph_def : cipher.  (* default ciphertext *)
 
@@ -50,19 +50,49 @@ axiom xor_associative : forall(x,y,z : text), (x ++ y) ++ z = x ++ (y ++ z).
 axiom xor_with_0: forall(x : text), x ++ zero = x.
 axiom xor_with_itself: forall(x:text), x ++ x = zero.
 
+module type RO = {
+  (* initialization *)
+  proc * init() : unit
+
+  (* application to a text *)
+  proc f(x : group) : text
+}.
+
+
+(* random function implemention using true randomness *)
+
+module TRF : RO = {
+  (* mp is a finite map associating texts with texts *)
+  var mp : (group, text) fmap
+
+  proc init() : unit = {
+    mp <- empty;  (* empty map *)
+  }
+
+  proc f(x : group) : text = {
+    var y : text;
+    if (! x \in mp) {   (* give x a random value in *)
+      y <$ dtext;  (* mp if not already in mp's domain *)
+      mp.[x] <- y;
+    }
+    return oget mp.[x];
+  }
+}.
+
+
 module type ENC = {
   (* Alice private key generation *)
   
   proc key_gen() : group * gf_q
 
   (* encryption *)
-  proc enc(A:group, x : text) : group*group
+  proc enc(A:group, x : text) : group*text
 
   (* decryption *)
-  proc dec(p: gf_q, c1 : group, c2 : group ) : text
+  proc dec(p: gf_q, c1 : group, c2 : text ) : text
 }.
 
-module Enc (TRF: RF): ENC = {
+module Enc (TRF: RO): ENC = {
 
   proc key_gen(): group * gf_q = {
     var x: gf_q;
@@ -70,20 +100,21 @@ module Enc (TRF: RF): ENC = {
     return (g^x, x); (*x is Alice's  private key *)
   }
 
-  proc enc(A: group, x : text) : group*group ={
-      var k : gf_q; var c_1, c_2: group;
+  proc enc(A: group, x : text) : group*text ={
+      var k : gf_q; var c_1 : group; var c_2 : text;
       k <$ dgf_q; (* Ephemeral key *)
       c_1 <- g^k;
-      c_2 <- TRF.f(group_text(A^k))++x;
+      c_2 <@ TRF.f(A^k); c_2 <- c_2 ++ x;
       return (c_1, c_2); (* Here A is Alice public key A = g^x , this returns c_1=g^k and c_2=mA^k *)
   }
 
       (* decryption *)
 
-  proc dec(priv_key: gf_q, c_1 : group, c_2 : group) : text ={
-      var y : group; y <- c_1^(priv_key);
-      c_2 <- inv(y)**c_2;
-      return((c_2));
+  proc dec(priv_key: gf_q, c_1 : group, c_2 : text) : text ={
+      var y : group; var c_3 : text;
+      y <- c_1^(priv_key);
+      c_3 <@ TRF.f(y);
+      return(c_3 ++ c_2);
   }
 }.
 (* module for checking correctness of encryption, parameterized
@@ -94,11 +125,11 @@ module Enc (TRF: RF): ENC = {
 
 module Cor (Enc : ENC) = {
   proc main(x : text) : bool = {
-    var c_1, c_2 : group; var priv_key : gf_q; var pub_key : group; var y: text;
+    var c_1  : group; var priv_key : gf_q; var pub_key : group; var y, c_2: text;
     (pub_key, priv_key) <@ Enc.key_gen();
     (c_1,c_2) <@ Enc.enc(pub_key, x);
     y <@ Enc.dec(priv_key, c_1, c_2);
-    return x = y;
+    return (x = y);
   }
 }.
 
@@ -106,7 +137,7 @@ module Cor (Enc : ENC) = {
 
 module type EO = {
   (* initialization *)
-  proc * init() : unit
+  proc * init() : group*gf_q
 
   (* encryption of text by adversary before game's encryption *)
   proc enc_pre(x : text) : cipher
@@ -122,12 +153,13 @@ module type EO = {
    scheme *)
 
 module EncO (Enc : ENC) : EO = {
-  var key : key
+  var pub_key : group
   var ctr_pre : int
   var ctr_post : int
 
-  proc init() : unit = {
-    key <@ Enc.key_gen();
+  proc init() : group*gf_q = {
+    var priv_key : gf_q;
+    (pub_key,priv_key) <@ Enc.key_gen();
     ctr_pre <- 0; ctr_post <- 0;
   }
 
@@ -135,7 +167,7 @@ module EncO (Enc : ENC) : EO = {
     var c : cipher;
     if (ctr_pre < limit_pre) {
       ctr_pre <- ctr_pre + 1;
-      c <@ Enc.enc(key, x);
+      c <@ Enc.enc(pub_key, x);
     }
     else {
       c <- ciph_def;  (* default result *)
@@ -145,7 +177,7 @@ module EncO (Enc : ENC) : EO = {
 
   proc genc(x : text) : cipher = {
     var c : cipher;
-    c <@ Enc.enc(key, x);
+    c <@ Enc.enc(pub_key, x);
     return c;
   }
 
@@ -153,7 +185,7 @@ module EncO (Enc : ENC) : EO = {
     var c : cipher;
     if (ctr_post < limit_post) {
       ctr_post <- ctr_post + 1;
-      c <@ Enc.enc(key, x);
+      c <@ Enc.enc(pub_key, x);
     }
     else {
       c <- ciph_def;  (* default result *)
@@ -196,15 +228,17 @@ module type ADV (EO : EO) = {
 
    Adv may directly use Enc (which is stateless) as much as it wants
    (and in any case could simulate it), but the security theorem must
-   say it can't read/write the global variables of EncO *)
+    say it can't read/write the global variables of EncO *)
 
-module INDCPA (Enc : ENC, Adv : ADV) = {
+   
+
+module Game_1 (Enc : ENC, Adv : ADV) = {
   module EO = EncO(Enc)        (* make EO from Enc *)
   module A = Adv(EO)           (* connect Adv to EO *)
 
   proc main() : bool = {
-    var b, b' : bool; var x1, x2 : text; var c : cipher;
-    EO.init();                 (* initialize EO *)
+    var b, b' : bool; var x1, x2 : text; var c : cipher;var priv_key : gf_q; var pub_key : group;
+    (pub_key, priv_key) <@ EO.init();                 (* initialize EO *)
     (x1, x2) <@ A.choose();    (* let A choose plaintexts x1/x2 *)
     b <$ {0,1};                (* choose boolean b *)
     c <@ EO.genc(b ? x1 : x2); (* encrypt x1 if b = true, x2 if b = false *)
