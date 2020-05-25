@@ -8,15 +8,17 @@
 prover ["Z3"].  (* no SMT solvers *)
 
 require import AllCore Distr DBool.
-require import prime_field.
+require import Cyclic_group_prime.
+require import Prime_field.
+
+
 
 (* theory parameters *)
 
-type group.
 
-const g:group. (* the generator *)
 
-op ( ** ): group -> group -> group.
+
+op dgf_q: gf_q distr.
 
 
 type key.  (* encryption keys *)
@@ -24,6 +26,10 @@ type key.  (* encryption keys *)
 type text.  (* plaintexts *)
 
 type cipher.  (* ciphertexts *)
+
+op hash: text -> group.
+op oplus: group* group -> group.
+
 
 op ciph_def : cipher.  (* default ciphertext *)
 
@@ -45,16 +51,42 @@ op limit_post : {int | 0 <= limit_post} as ge0_limit_post.
      forall (g1 g2 : glob Enc), g1 = g2 *)
 
 module type ENC = {
-  (* key generation *)
-  proc key_gen() : key
+  (* Alice private key generation *)
+  
+  proc key_gen() : group * gf_q
 
   (* encryption *)
-  proc enc(k : key, x : text) : cipher
+  proc enc(A:group, x : text) : group*group
 
   (* decryption *)
-  proc dec(k : key, c : cipher) : text
+  proc dec(p: gf_q, k : group, c : text) : text
 }.
 
+module Enc : ENC = {
+
+  proc key_gen(): group * gf_q = {
+    var x: gf_q;
+    x <$ dgf_q;
+    return (g^x, x); (*x is Alice's  private key *)
+  }
+
+  proc enc(A: group, x : text) : group*group ={
+      var k : gf_q; var c_1, c_2: group;
+      k <$ dgf_q; (* Ephemeral key *)
+      c_1 <- g^k;
+      c_2 <- hash(x)**A^k;
+      return (c_1, c_2); (* Here k is Alice public key A = g^x , this returns c_1=g^k and c_2=mA^k *)
+  }
+
+      (* decryption *)
+
+  proc dec(priv_key: gf_q, c_1 : group, c_2 : text) : text ={
+      var y : group; y <- c_1^(priv_key); y <- inv(y);
+   
+  }
+
+
+}.
 (* module for checking correctness of encryption, parameterized
    by encryption scheme
 

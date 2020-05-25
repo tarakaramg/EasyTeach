@@ -6,14 +6,14 @@ require import Distr.
 type group.
 const g:group. (* the generator *)
 
-op ( * ): group -> group -> group.   (* multiplication of group elements *)
+op ( ** ): group -> group -> group.   (* multiplication of group elements *)
 op ( ^ ): group -> gf_q -> group.    (* exponentiation *)
 op log:group -> gf_q.                (* discrete logarithm *)
 
-op (/) (a b:group): group = g^(log a - log b).
+op (//) (a b:group): group = g^(log a - log b).
 
 axiom group_pow_add: forall (x y:gf_q),
-  g ^ x * g ^ y = g ^ (x + y).
+  g ^ x ** g ^ y = g ^ (x + y).
 
 axiom group_pow_mult: forall (x y:gf_q),
   (g ^ x) ^ y = g ^ (x * y).
@@ -29,10 +29,10 @@ theory Dgroup.
   op dgroup: group distr.
 
   axiom supp_def: forall (s:group),
-    in_supp s dgroup.
+    support dgroup s.
 
   axiom mu_x_def_in: forall (s:group),
-    mu_x dgroup s = 1%r/q%r.
+    mu dgroup ((=)s) = 1%r/q%r.
 
   axiom lossless: weight dgroup = 1%r.
 
