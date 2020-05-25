@@ -9,27 +9,22 @@ prover ["Z3"].  (* no SMT solvers *)
 
 require import AllCore Distr DBool.
 require import Cyclic_group_prime.
+import Dgroup.
 require import Prime_field.
-
-
+require import PseudoRandFun.
 
 (* theory parameters *)
 
 
-
-
-op dgf_q: gf_q distr.
-
-
 type key.  (* encryption keys *)
-
-type text.  (* plaintexts *)
+ (* plaintexts *)
+const zero:text.
 
 type cipher.  (* ciphertexts *)
 
-op hash: text -> group.
-op oplus: group* group -> group.
 
+op ( ++ ) : text -> text -> text.
+op group_text: group -> text.
 
 op ciph_def : cipher.  (* default ciphertext *)
 
@@ -48,7 +43,12 @@ op limit_post : {int | 0 <= limit_post} as ge0_limit_post.
 
    an encryption scheme Enc should be stateless, meaning that
 
-     forall (g1 g2 : glob Enc), g1 = g2 *)
+  forall (g1 g2 : glob Enc), g1 = g2 *)
+
+axiom xor_commutative : forall(x : text, y : text), x ++ y = y ++  x.
+axiom xor_associative : forall(x,y,z : text), (x ++ y) ++ z = x ++ (y ++ z).
+axiom xor_with_0: forall(x : text), x ++ zero = x.
+axiom xor_with_itself: forall(x:text), x ++ x = zero.
 
 module type ENC = {
   (* Alice private key generation *)
@@ -59,10 +59,10 @@ module type ENC = {
   proc enc(A:group, x : text) : group*group
 
   (* decryption *)
-  proc dec(p: gf_q, k : group, c : text) : text
+  proc dec(p: gf_q, c1 : group, c2 : group ) : text
 }.
 
-module Enc : ENC = {
+module Enc (TRF: RF): ENC = {
 
   proc key_gen(): group * gf_q = {
     var x: gf_q;
@@ -74,18 +74,17 @@ module Enc : ENC = {
       var k : gf_q; var c_1, c_2: group;
       k <$ dgf_q; (* Ephemeral key *)
       c_1 <- g^k;
-      c_2 <- hash(x)**A^k;
-      return (c_1, c_2); (* Here k is Alice public key A = g^x , this returns c_1=g^k and c_2=mA^k *)
+      c_2 <- TRF.f(group_text(A^k))++x;
+      return (c_1, c_2); (* Here A is Alice public key A = g^x , this returns c_1=g^k and c_2=mA^k *)
   }
 
       (* decryption *)
 
-  proc dec(priv_key: gf_q, c_1 : group, c_2 : text) : text ={
-      var y : group; y <- c_1^(priv_key); y <- inv(y);
-   
+  proc dec(priv_key: gf_q, c_1 : group, c_2 : group) : text ={
+      var y : group; y <- c_1^(priv_key);
+      c_2 <- inv(y)**c_2;
+      return((c_2));
   }
-
-
 }.
 (* module for checking correctness of encryption, parameterized
    by encryption scheme
@@ -95,10 +94,10 @@ module Enc : ENC = {
 
 module Cor (Enc : ENC) = {
   proc main(x : text) : bool = {
-    var k : key; var c : cipher; var y : text;
-    k <@ Enc.key_gen();
-    c <@ Enc.enc(k, x);
-    y <@ Enc.dec(k, c);
+    var c_1, c_2 : group; var priv_key : gf_q; var pub_key : group; var y: text;
+    (pub_key, priv_key) <@ Enc.key_gen();
+    (c_1,c_2) <@ Enc.enc(pub_key, x);
+    y <@ Enc.dec(priv_key, c_1, c_2);
     return x = y;
   }
 }.
