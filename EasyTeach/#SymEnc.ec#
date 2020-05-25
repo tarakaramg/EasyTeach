@@ -28,7 +28,8 @@ type text.  (* plaintexts *)
 type cipher.  (* ciphertexts *)
 
 op hash: text -> group.
-op oplus: group* group -> group.
+op inv: group -> group.
+op invhash: group -> text.
 
 
 op ciph_def : cipher.  (* default ciphertext *)
@@ -59,7 +60,7 @@ module type ENC = {
   proc enc(A:group, x : text) : group*group
 
   (* decryption *)
-  proc dec(p: gf_q, k : group, c : text) : text
+  proc dec(p: gf_q, c1 : group, c2 : group ) : text
 }.
 
 module Enc : ENC = {
@@ -80,8 +81,11 @@ module Enc : ENC = {
 
       (* decryption *)
 
-  proc dec(priv_key: gf_q, c_1 : group, c_2 : text) : text ={
+  proc dec(priv_key: gf_q, c_1 : group, c_2 : group) : text ={
       var y : group; y <- c_1^(priv_key); y <- inv(y);
+      c_2 <- y**c_2;
+      return(invhash(c_2));
+    
    
   }
 
@@ -95,7 +99,7 @@ module Enc : ENC = {
 
 module Cor (Enc : ENC) = {
   proc main(x : text) : bool = {
-    var k : key; var c : cipher; var y : text;
+    var ci: group; var priv_key : gf_q; var y : text;
     k <@ Enc.key_gen();
     c <@ Enc.enc(k, x);
     y <@ Enc.dec(k, c);
