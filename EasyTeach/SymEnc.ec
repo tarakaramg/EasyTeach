@@ -9,8 +9,8 @@ prover ["Z3"].  (* no SMT solvers *)
 
 require import AllCore Distr DBool FSet SmtMap.
 require import Cyclic_group_prime.
-import Dgroup.
 require import Prime_field.
+import Dgf_q.
 
 (* theory parameters *)
 
@@ -48,6 +48,7 @@ axiom xor_commutative : forall(x : text, y : text), x ++ y = y ++  x.
 axiom xor_associative : forall(x,y,z : text), (x ++ y) ++ z = x ++ (y ++ z).
 axiom xor_with_0: forall(x : text), x ++ zero = x.
 axiom xor_with_itself: forall(x:text), x ++ x = zero.
+axiom dtext_lossless : weight dtext = 1%r.
 
 module type RO = {
   (* initialization *)
@@ -132,80 +133,20 @@ module Cor (Enc : ENC) = {
   }
 }.
 
-(* module type of encryption oracles *)
 
-module type EO = {
-  (* initialization *)
-  proc * init() : group*gf_q
-
-  (* encryption of text by adversary before game's encryption *)
-  proc enc_pre(x : text) : group*text
-
-  (* one-time encryption of text by game *)
-  proc genc(x : text) : group*text
-
-  (* encryption of text by adversary after game's encryption *)
-  proc enc_post(x : text) : group*text
-}.
-
-(* standard encryption oracle, constructed from an encryption
-   scheme *)
-
-module EncO (Enc : ENC) : EO = {
-  var pub_key : group
-  var ctr_pre : int
-  var ctr_post : int
-
-  proc init() : group*gf_q = {
-    var priv_key : gf_q;
-    (pub_key,priv_key) <@ Enc.key_gen();
-      ctr_pre <- 0; ctr_post <- 0;
-    return (pub_key,priv_key);
-  }
-
-  proc enc_pre(x : text) : group*text = {
-    var c_1 : group; var c_2 : text;
-    if (ctr_pre < limit_pre) {
-      ctr_pre <- ctr_pre + 1;
-      (c_1,c_2) <@ Enc.enc(pub_key, x);
-    }
-    else {
-      (c_1,c_2) <- ciph_def;  (* default result *)
-    }  
-    return (c_1,c_2);
-  }
-
-  proc genc(x : text) : group*text = {
-    var c_2 : text; var c_1 : group;
-    (c_1,c_2) <@ Enc.enc(pub_key, x);
-    return (c_1,c_2);
-  }
-
-  proc enc_post(x : text) : group*text = {
-    var c_2 : text; var c_1 : group;
-    if (ctr_post < limit_post) {
-      ctr_post <- ctr_post + 1;
-      (c_1, c_2) <@ Enc.enc(pub_key, x);
-    }
-    else {
-      (c_1,c_2) <- ciph_def;  (* default result *)
-    }  
-    return (c_1,c_2);
-  }
-}.
 
 (* encryption adversary, parameterized by encryption oracle, EO
 
    choose may only call EO.enc_pre; guess may only call EO.enc_post *)
 
-module type ADV (EO : EO) = {
+module type ADV (RO : RO) = {
   (* choose a pair of plaintexts, x1/x2 *)
-  proc * choose(pub_key: group ) : text * text {EO.enc_pre}
+  proc * choose(pub_key: group ) : text * text {RO.f}
 
   (* given ciphertext c based on a random boolean b (the encryption
      using EO.genc of x1 if b = true, the encryption of x2 if b =
      false), try to guess b *)
-  proc guess(c_1 : group, c_2 : text) : bool {EO.enc_post}
+  proc guess(c_1 : group, c_2 : text) : bool {RO.f}
 }.
 
 (* IND-CPA security game, parameterized by an encryption scheme Enc
@@ -232,28 +173,65 @@ module type ADV (EO : EO) = {
 
    
 
-module Game_1 (Enc : ENC, Adv : ADV) = {
-  module EO = EncO(Enc)        (* make EO from Enc *)
-  module A = Adv(EO)           (* connect Adv to EO *)
+module IND_CPA (Enc : ENC, Adv : ADV) = {
+  module A = Adv(TRF)           (* connect Adv to RO *)
 
   proc main() : bool = {
     var b, b' : bool; var x1, x2 : text; var c_2 : text;var priv_key : gf_q; var c_1,pub_key : group;
-    (pub_key, priv_key) <@ EO.init();                 (* initialize EO *)
+   (pub_key,priv_key) <@ Enc.key_gen();
     (x1, x2) <@ A.choose(pub_key);    (* let A choose plaintexts x1/x2 *)
     b <$ {0,1};                (* choose boolean b *)
-    (c_1,c_2) <@ EO.genc(b ? x1 : x2); (* encrypt x1 if b = true, x2 if b = false *)
+    (c_1,c_2) <@ Enc.enc(pub_key, b ? x1 : x2); (* encrypt x1 if b = true, x2 if b = false *)
     b' <@ A.guess(c_1,c_2);          (* give ciphertext to A, which returns guess *)
     return b = b';             (* see if A guessed correctly, winning game *)
   }
 }.
 
+lemma enc_stateless (g1 g2 : glob Enc): g1 = g2.
+    proof.
+      auto.
+qed.    
+    (* lemma proving correctness of encryption *)
 
-(* lemma proving correctness of encryption *)
 
-lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
 
+lemma correctness : phoare[Cor(Enc(TRF)).main : true ==> res] = 1%r.
+    proof.
+      proc.
+      inline*.
+      seq 4: ((A = g^x0) /\ (x1 = x) /\ (x0 = priv_key)).
+      auto.
+      auto.
+      progress.    
+      apply lossless.
+      seq 3: ((x2 = A^k) /\ (c_10 = g^k)). 
+      auto.
+      auto.
+      progress.
+      apply lossless.
+      if.
+      auto.
+      progress.
+      seq 8: (x2 = y1).
+      auto.    
+      auto.
+      progress.
+      apply dtext_lossless.
+      progress.
     
-module Game_2 = {
+      seq 2: (x3 = y0).      
+      auto.
+      auto.
+      if.
+      auto.
+      progress.
+      apply dtext_lossless.
+      progress.
+      skip.
+    
+    
+    
+    module Game_2 = {
 
   module EO = EncO(Enc)
   (pub_key, priv_key) <@ EO.init();
