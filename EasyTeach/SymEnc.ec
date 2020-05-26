@@ -49,6 +49,12 @@ axiom xor_associative : forall(x,y,z : text), (x ++ y) ++ z = x ++ (y ++ z).
 axiom xor_with_0: forall(x : text), x ++ zero = x.
 axiom xor_with_itself: forall(x:text), x ++ x = zero.
 axiom dtext_lossless : weight dtext = 1%r.
+axiom pow_pow: forall(g: group, v,v_1 : gf_q), g^v^v_1 = g^(v_1*v).
+
+
+(*lemma pow_com: forall(g : group, v,v_1 : gf_q), g^v^v_1 = g^(v_1*v).
+    proof.
+*)
 
 module type RO = {
   (* initialization *)
@@ -95,9 +101,9 @@ module type ENC = {
 module Enc (TRF: RO): ENC = {
 
   proc key_gen(): group * gf_q = {
-    var x: gf_q;
-    x <$ dgf_q;
-    return (g^x, x); (*x is Alice's  private key *)
+    var priv_k: gf_q;
+    priv_k <$ dgf_q;
+    return (g^priv_k, priv_k); (*x is Alice's  private key *)
   }
 
   proc enc(A: group, x : text) : group*text ={
@@ -193,17 +199,33 @@ lemma enc_stateless (g1 g2 : glob Enc): g1 = g2.
 qed.    
     (* lemma proving correctness of encryption *)
 
+lemma exp_equal : forall(g: group, x_1, x_2 : gf_q),  x_1 = x_2 => g^x_1 = g^x_2 .
+    admit.
+    qed.
 
 
 lemma correctness : phoare[Cor(Enc(TRF)).main : true ==> res] = 1%r.
     proof.
       proc.
       inline*.
-      seq 4: ((A = g^x0) /\ (x1 = x) /\ (x0 = priv_key)).
+      seq 16: ((A = g^priv_k) /\ (A = pub_key) /\ (x2 = g^(priv_k*k)) /\ (x1 = A^k) /\ (priv_key = priv_k) /\ (TRF.mp.[x1] = Some y1) /\ (x2 = y0) /\ (y0 = c_1^priv_key)).
       auto.
       auto.
-      progress.    
+      progress.
+      seq 7: ((x1=A^k)/\ (A = pub_key) /\ (pub_key = g^priv_key)/\ (priv_key = priv_k) /\ (c_10 = g^k)).
+      auto.
+      auto.
+      progress.
       apply lossless.
+      if.
+      auto.
+      progress.
+      apply dtext_lossless.
+      auto.
+      apply pow_pow.
+      auto.
+    
+apply pow_pow.    
       seq 3: ((x2 = A^k) /\ (c_10 = g^k)). 
       auto.
       auto.
