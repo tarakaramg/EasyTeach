@@ -20,13 +20,12 @@ type key.  (* encryption keys *)
 type  text.
 const zero:text.
 
-type cipher = group*text.  (* ciphertexts *)
 
 
 op ( ++ ) : text -> text -> text.
 op dtext : text distr.
 
-op ciph_def : cipher.  (* default ciphertext *)
+op ciph_def : group*text.  (* default ciphertext *)
 
 (* encryption oracle limit before game's encryption
 
@@ -140,13 +139,13 @@ module type EO = {
   proc * init() : group*gf_q
 
   (* encryption of text by adversary before game's encryption *)
-  proc enc_pre(x : text) : cipher
+  proc enc_pre(x : text) : group*text
 
   (* one-time encryption of text by game *)
-  proc genc(x : text) : cipher
+  proc genc(x : text) : group*text
 
   (* encryption of text by adversary after game's encryption *)
-  proc enc_post(x : text) : cipher
+  proc enc_post(x : text) : group*text
 }.
 
 (* standard encryption oracle, constructed from an encryption
@@ -160,37 +159,38 @@ module EncO (Enc : ENC) : EO = {
   proc init() : group*gf_q = {
     var priv_key : gf_q;
     (pub_key,priv_key) <@ Enc.key_gen();
-    ctr_pre <- 0; ctr_post <- 0;
+      ctr_pre <- 0; ctr_post <- 0;
+    return (pub_key,priv_key);
   }
 
-  proc enc_pre(x : text) : cipher = {
-    var c : cipher;
+  proc enc_pre(x : text) : group*text = {
+    var c_1 : group; var c_2 : text;
     if (ctr_pre < limit_pre) {
       ctr_pre <- ctr_pre + 1;
-      c <@ Enc.enc(pub_key, x);
+      (c_1,c_2) <@ Enc.enc(pub_key, x);
     }
     else {
-      c <- ciph_def;  (* default result *)
+      (c_1,c_2) <- ciph_def;  (* default result *)
     }  
-    return c;
+    return (c_1,c_2);
   }
 
-  proc genc(x : text) : cipher = {
-    var c : cipher;
-    c <@ Enc.enc(pub_key, x);
-    return c;
+  proc genc(x : text) : group*text = {
+    var c_2 : text; var c_1 : group;
+    (c_1,c_2) <@ Enc.enc(pub_key, x);
+    return (c_1,c_2);
   }
 
-  proc enc_post(x : text) : cipher = {
-    var c : cipher;
+  proc enc_post(x : text) : group*text = {
+    var c_2 : text; var c_1 : group;
     if (ctr_post < limit_post) {
       ctr_post <- ctr_post + 1;
-      c <@ Enc.enc(pub_key, x);
+      (c_1, c_2) <@ Enc.enc(pub_key, x);
     }
     else {
-      c <- ciph_def;  (* default result *)
+      (c_1,c_2) <- ciph_def;  (* default result *)
     }  
-    return c;
+    return (c_1,c_2);
   }
 }.
 
@@ -200,12 +200,12 @@ module EncO (Enc : ENC) : EO = {
 
 module type ADV (EO : EO) = {
   (* choose a pair of plaintexts, x1/x2 *)
-  proc * choose() : text * text {EO.enc_pre}
+  proc * choose(pub_key: group ) : text * text {EO.enc_pre}
 
   (* given ciphertext c based on a random boolean b (the encryption
      using EO.genc of x1 if b = true, the encryption of x2 if b =
      false), try to guess b *)
-  proc guess(c : cipher) : bool {EO.enc_post}
+  proc guess(c_1 : group, c_2 : text) : bool {EO.enc_post}
 }.
 
 (* IND-CPA security game, parameterized by an encryption scheme Enc
@@ -237,12 +237,23 @@ module Game_1 (Enc : ENC, Adv : ADV) = {
   module A = Adv(EO)           (* connect Adv to EO *)
 
   proc main() : bool = {
-    var b, b' : bool; var x1, x2 : text; var c : cipher;var priv_key : gf_q; var pub_key : group;
+    var b, b' : bool; var x1, x2 : text; var c_2 : text;var priv_key : gf_q; var c_1,pub_key : group;
     (pub_key, priv_key) <@ EO.init();                 (* initialize EO *)
-    (x1, x2) <@ A.choose();    (* let A choose plaintexts x1/x2 *)
+    (x1, x2) <@ A.choose(pub_key);    (* let A choose plaintexts x1/x2 *)
     b <$ {0,1};                (* choose boolean b *)
-    c <@ EO.genc(b ? x1 : x2); (* encrypt x1 if b = true, x2 if b = false *)
-    b' <@ A.guess(c);          (* give ciphertext to A, which returns guess *)
+    (c_1,c_2) <@ EO.genc(b ? x1 : x2); (* encrypt x1 if b = true, x2 if b = false *)
+    b' <@ A.guess(c_1,c_2);          (* give ciphertext to A, which returns guess *)
     return b = b';             (* see if A guessed correctly, winning game *)
   }
 }.
+
+
+(* lemma proving correctness of encryption *)
+
+lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
+
+    
+module Game_2 = {
+
+  module EO = EncO(Enc)
+  (pub_key, priv_key) <@ EO.init();
