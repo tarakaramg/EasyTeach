@@ -50,6 +50,7 @@ axiom xor_with_0: forall(x : text), x ++ zero = x.
 axiom xor_with_itself: forall(x:text), x ++ x = zero.
 axiom dtext_lossless : weight dtext = 1%r.
 axiom pow_pow: forall(g: group, v,v_1 : gf_q), g^v^v_1 = g^(v_1*v).
+axiom pow_com: forall(g: group, v,v_1 : gf_q), g^v^v_1 = g^v_1^v.
 
 
 (*lemma pow_com: forall(g : group, v,v_1 : gf_q), g^v^v_1 = g^(v_1*v).
@@ -106,12 +107,12 @@ module Enc (TRF: RO): ENC = {
     return (g^priv_k, priv_k); (*x is Alice's  private key *)
   }
 
-  proc enc(A: group, x : text) : group*text ={
+  proc enc(A: group, plain_text : text) : group*text ={
       var k : gf_q; var c_1 : group; var c_2 : text;
       k <$ dgf_q; (* Ephemeral key *)
       c_1 <- g^k;
-      c_2 <@ TRF.f(A^k); c_2 <- c_2 ++ x;
-      return (c_1, c_2); (* Here A is Alice public key A = g^x , this returns c_1=g^k and c_2=mA^k *)
+      c_2 <@ TRF.f(A^k); c_2 <- c_2 ++ plain_text;
+      return (c_1, c_2); (* Here A is Alice public key A = g^priv_key , this returns c_1=g^k and c_2= TRF.f(A^k)++message *)
   }
 
       (* decryption *)
@@ -120,7 +121,7 @@ module Enc (TRF: RO): ENC = {
       var y : group; var c_3 : text;
       y <- c_1^(priv_key);
       c_3 <@ TRF.f(y);
-      return(c_3 ++ c_2);
+      return(c_3 ++ c_2); (* As y =c_1^(priv_key) and c_1 = g^k; c_3 ++ c_2 will  TRF.f(c_1^(priv_key)) ++ TRF.f(A^k) ++ message *)
   }
 }.
 (* module for checking correctness of encryption, parameterized
@@ -208,22 +209,34 @@ lemma correctness : phoare[Cor(Enc(TRF)).main : true ==> res] = 1%r.
     proof.
       proc.
       inline*.
-      seq 16: ((A = g^priv_k) /\ (A = pub_key) /\ (x2 = g^(priv_k*k)) /\ (x1 = A^k) /\ (priv_key = priv_k) /\ (TRF.mp.[x1] = Some y1) /\ (x2 = y0) /\ (y0 = c_1^priv_key)).
+      seq 16: ((A = g^priv_k) /\ (A = pub_key) /\ (x0=x) /\ (TRF.mp.[x1] = Some y1) /\ (x2 = x1) /\ (y0 = c_1^priv_key)/\ (c_20 = y1++x0)).
       auto.
       auto.
       progress.
-      seq 7: ((x1=A^k)/\ (A = pub_key) /\ (pub_key = g^priv_key)/\ (priv_key = priv_k) /\ (c_10 = g^k)).
+      seq 4: ((A = pub_key) /\ (x0=x) /\ (A = g ^ priv_k) /\ (priv_key = priv_k)). 
+      auto.
+      auto.
+      progress.
+      apply lossless.
+      seq 3: ((x1 = A ^ k)/\ (x0=x) /\ (c_10 = g ^ k) /\ (A = g ^ priv_key) /\ (priv_k = priv_key) /\ pub_key = g^ priv_key). 
       auto.
       auto.
       progress.
       apply lossless.
       if.
       auto.
-      progress.
+      progress.    
       apply dtext_lossless.
-      auto.
-      apply pow_pow.
-      auto.
+      apply get_set_sameE.
+      apply pow_com.
+   
+    
+    
+  
+    
+    
+    
+    
     
 apply pow_pow.    
       seq 3: ((x2 = A^k) /\ (c_10 = g^k)). 
