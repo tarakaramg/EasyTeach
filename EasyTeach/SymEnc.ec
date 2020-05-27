@@ -227,6 +227,17 @@ lemma correctness : phoare[Cor(Enc(TRF)).main : true ==> res] = 1%r.
       auto.
       progress.
       apply dtext_lossless.
+      apply get_set_sameE.
+      sp.
+      if.
+      seq 2: (TRF.mp.[x1] = Some y2).
+      auto.
+      auto.
+      progress.
+      apply dtext_lossless.
+      apply get_set_sameE.
+      auto.
+      progress.
       
     
     
