@@ -229,61 +229,6 @@ lemma correctness : phoare[Cor(Enc(TRF)).main : true ==> res] = 1%r.
       apply dtext_lossless.
       
     
-      seq 16: ((A = g^priv_k) /\ (A = pub_key) /\ (x0=x) /\ (TRF.mp.[x1] = Some y1) /\ (x2 = x1) /\ (y0 = c_1^priv_key)/\ (c_20 = y1++x0)).
-      auto.
-      auto.
-      progress.
-      seq 4: ((A = pub_key) /\ (x0=x) /\ (A = g ^ priv_k) /\ (priv_key = priv_k)). 
-      auto.
-      auto.
-      progress.
-      apply lossless.
-      seq 3: ((x1 = A ^ k)/\ (x0=x) /\ (c_10 = g ^ k) /\ (A = g ^ priv_key) /\ (priv_k = priv_key) /\ pub_key = g^ priv_key). 
-      auto.
-      auto.
-      progress.
-      apply lossless.
-      if.
-      auto.
-      progress.    
-      apply dtext_lossless.
-      apply get_set_sameE.
-      apply pow_com.
-   
-    
-    
-  
-    
-    
-    
-    
-    
-apply pow_pow.    
-      seq 3: ((x2 = A^k) /\ (c_10 = g^k)). 
-      auto.
-      auto.
-      progress.
-      apply lossless.
-      if.
-      auto.
-      progress.
-      seq 8: (x2 = y1).
-      auto.    
-      auto.
-      progress.
-      apply dtext_lossless.
-      progress.
-    
-      seq 2: (x3 = y0).      
-      auto.
-      auto.
-      if.
-      auto.
-      progress.
-      apply dtext_lossless.
-      progress.
-      skip.
-    
     
     
     module Game_2 = {
