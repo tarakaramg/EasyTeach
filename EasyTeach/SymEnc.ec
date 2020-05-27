@@ -209,6 +209,26 @@ lemma correctness : phoare[Cor(Enc(TRF)).main : true ==> res] = 1%r.
     proof.
       proc.
       inline*.
+      seq 2: ((pub_key = g ^ priv_k) /\ (priv_key = priv_k)).
+      auto.
+      auto.    
+      progress.
+      apply lossless.
+      sp.    
+      seq 2: (c_10 = g ^ k).
+      auto.
+      auto.
+      progress.
+      apply lossless.
+      sp.
+      if.
+      seq 2: (TRF.mp.[x0] = Some y1).
+      auto.
+      auto.
+      progress.
+      apply dtext_lossless.
+      
+    
       seq 16: ((A = g^priv_k) /\ (A = pub_key) /\ (x0=x) /\ (TRF.mp.[x1] = Some y1) /\ (x2 = x1) /\ (y0 = c_1^priv_key)/\ (c_20 = y1++x0)).
       auto.
       auto.
