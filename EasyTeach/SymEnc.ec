@@ -20,7 +20,7 @@ op dtext : text distr.
 
 axiom xor_commutative : forall(x : text, y : text), x ++ y = y ++  x.
 axiom xor_associative (x,y,z : text) : (x ++ y) ++ z = x ++ (y ++ z).
-axiom xor_with_0: forall(x : text), x ++ zero = x.
+axiom xor_with_0 (x : text) :  x ++ zero  = x.
 axiom xor_with_itself: forall(x:text), x ++ x = zero.
 axiom dtext_lossless : weight dtext = 1%r.
 
@@ -233,7 +233,13 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
          progress.
          rewrite pow_pow pow_com_2.
          rewrite get_set_sameE.
-         smt( xor_associative xor_with_itself xor_with_0).
+         have -> : oget (Some y1{hr}) ++ (oget (Some y1{hr}) ++ x{hr}) = (oget (Some y1{hr}) ++ oget (Some y1{hr})) ++ x{hr}.
+         rewrite xor_associative //.
+         rewrite xor_with_itself.
+         have -> : zero ++ x{hr} = x{hr}.
+         rewrite xor_commutative.
+         by rewrite xor_with_0 //.       
+         trivial.       
        hoare.
          auto.
          progress.
@@ -245,59 +251,19 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
          rewrite pow_pow pow_com_2 //. 
          auto.
          progress.
-         rewrite pow_pow pow_com_2. 
-       search _.[_].
-       search oget.
-         rewrite get_some.
+         rewrite pow_pow pow_com_2.
+         smt( xor_associative xor_commutative xor_with_itself xor_with_0).
+       hoare.
+         auto.
+         progress.
+         rewrite pow_pow.
          trivial.
-         simplify.
-         smt( xor_associative xor_with_itself xor_with_0).
-       search oget.
-       
-       
-apply getE.
-apply map_set.
-       apply get_set_sameE.
-       apply oget_omap_some.
-apply oget_omap_some.
-       
-
-       
-(*
-search "_.[_<-_]" "_.[_]".
-search dom. (* instead of (\in) *)
-*)
-admit.
-auto; progress.
-admit.
-hoare.
-auto.
-trivial.
-
-
-
-
-     if.
-     auto; progress. apply dtext_lossless.
-
-
-
-     seq 2: (RO.mp.[x0] = Some y1).
-     auto.
-     auto.
-     progress.
-     apply dtext_lossless.
-     apply get_set_sameE.
-     sp.
-     if.
-     seq 2: (RO.mp.[x1] = Some y2).
-     auto.
-     auto.
-     progress.
-     apply dtext_lossless.
-     apply get_set_sameE.
-     auto.
-     progress.
+         auto.
+         wp.
+         auto.
+         trivial.
+     qed.
+     
 
 
 
