@@ -225,14 +225,14 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
      rcondf 1.
          auto; progress.
        search dom _.[_<-_].
-       apply mem_set.
+         rewrite pow_pow. rewrite pow_com_2.
+         rewrite pow_com_2.
+         apply mem_set.
          smt( pow_pow pow_com_2).
          auto.
          progress.
-      
-       search _.[_<-_].
-       rewrite pow_pow pow_com_2.
-       rewrite get_set_sameE.
+         rewrite pow_pow pow_com_2.
+         rewrite get_set_sameE.
          smt( xor_associative xor_with_itself xor_with_0).
        hoare.
          auto.
@@ -249,9 +249,9 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
        search _.[_].
        search oget.
          rewrite get_some.
-trivial.
-       
-         rewrite  xor_associative xor_with_itself xor_with_0.
+         trivial.
+         simplify.
+         smt( xor_associative xor_with_itself xor_with_0).
        search oget.
        
        
