@@ -252,8 +252,12 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
          auto.
          progress.
          rewrite pow_pow pow_com_2.
-         smt( xor_associative xor_commutative xor_with_itself xor_with_0).
-       hoare.
+         rewrite - xor_associative.
+         rewrite xor_with_itself.
+         rewrite xor_commutative.       
+         rewrite xor_with_0.
+         trivial.
+      hoare.
          auto.
          progress.
          rewrite pow_pow.
@@ -265,7 +269,22 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
      qed.
      
 
+module IND_CPA (Enc : ENC, Adv : ADV) = {
+ module E = Enc(RO)  (* connect Enc to RO *)
+ module A = Adv(RO)  (* connect Adv to RO *)
 
+ proc main() : bool = {
+   var b, b' : bool; var x1, x2 : text; var c : cipher;
+   var priv_key : priv; var pub_key : pub;
+  RO.init();
+  (pub_key,priv_key) <@ E.key_gen();
+   (x1, x2) <@ A.choose(pub_key);    (* let A choose plaintexts x1/x2 *)
+   b <$ {0,1};                (* choose boolean b *)
+   c <@ E.enc(pub_key, b ? x1 : x2); (* encrypt x1 if b = true, x2 if b = false *)
+   b' <@ A.guess(c);          (* give ciphertext to A, which returns guess *)
+   return b = b';             (* see if A guessed correctly, winning game *)
+ }
+}.
 
 
    module Game_2 = {
