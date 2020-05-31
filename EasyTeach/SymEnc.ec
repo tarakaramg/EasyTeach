@@ -24,6 +24,32 @@ axiom xor_with_0 (x : text) :  x ++ zero  = x.
 axiom xor_with_itself: forall(x:text), x ++ x = zero.
 axiom dtext_lossless : weight dtext = 1%r.
 
+lemma exp_equal (g: group, x_1, x_2 : gf_q) : x_1 = x_2 => g^x_1 = g^x_2 .
+proof. 
+move => -> //.
+qed.
+
+
+axiom pow_pow (g: group, v,v_1 : gf_q) :  g^v^v_1 = g^(v * v_1).
+
+lemma pow_com (g: group, v,v_1 : gf_q) : g^v^v_1 = g^v_1^v.
+    proof.
+    have -> :  g^v^v_1 = g^(v*v_1).
+      apply pow_pow.
+    have -> : v*v_1 = v_1*v.
+      apply gf_q_mult_comm.
+      smt(pow_pow).
+  qed.
+
+lemma pow_com_2 (g: group, v,v_1 : gf_q) : g^(v*v_1) = g^(v_1*v).
+    have -> : g^(v*v_1) = g^v^v_1.
+    smt(pow_pow).
+    have -> : g^(v_1*v) = g^v_1^v.
+    smt(pow_pow).
+    apply pow_com.
+  qed.
+  
+ 
 
 module type RO = {
  (* initialization *)
@@ -171,55 +197,58 @@ module IND_CPA (Enc : ENC, Adv : ADV) = {
 
 module type ADV_LCDH = {
 
-  proc main (x1 : group, x2 : group) : group list
+  proc main (x1 : pub, x2 : group) : group list
 }.
 
-module Adv_Lcdh (ADV_LCDH : ADV_LCDH) = {
+module type GAME_LCDH = {
 
-  proc main (x1 : group, x2 : group) : group list = {
-  var k : group list;
-  return k;
-    
-  }
+  proc main () : bool
 }.
 
 
-module LCDH_Game (Adv_l : ADV_LCDH) = {
+module Or : RO = {
   
-  proc main() : bool = {
-  var x,y : gf_q; var l : group list;
+  var mp : (group, text) fmap
+    proc init() : unit = {
+    mp <- empty;  (* empty map *)
+    }
+        proc f(x : group) : text = {
+        var y : text;
+        if (! x \in mp) {   (* give x a random value in *)
+        y <$ dtext;  (* mp if not already in mp's domain *)
+        mp.[x] <- y;
+      }
+          return oget mp.[x];
+    }
+  }.
+
+
+  module Adv_LCDH (Adv : ADV)  : ADV_LCDH = {
+    (* LCDH adversary, takes g^x and g^y, return list of g^xy guesses using ADV choose and guess procedures*)
+    module A = Adv(Or)
+      proc main (pub_key : pub, x2 : group) : group list = {
+      var k : group list <- []; var text_1, text_2, text_3 : text; var b : bool;
+      (text_1, text_2) <@ A.choose(pub_key);
+        text_3 <$ dtext;
+        b <@ A.guess(x2, text_3);
+        return k;
+      }
+  }.
+  
+
+
+  module  Game_LCDH (Adv : ADV_LCDH) : GAME_LCDH = {
+    
+  (* LCDH Game, we randomly pick x,y, and pass g^x, g^y to LCDH Adversary, which returns a list *)
+    proc main() : bool = {
+    var x,y : gf_q; var l : group list;
+    Or.init();
     x <$ dgf_q;
     y <$ dgf_q;
-    l <@ Adv_l.main( g ^ x, g ^ y);
+    l <@ Adv.main( g ^ x, g ^ y);
     return (g^ (x * y) \in l);
-  }
-}.
-    
-
-lemma exp_equal (g: group, x_1, x_2 : gf_q) : x_1 = x_2 => g^x_1 = g^x_2 .
-proof. 
-move => -> //.
-qed.
-
-
-axiom pow_pow (g: group, v,v_1 : gf_q) :  g^v^v_1 = g^(v * v_1).
-
-lemma pow_com (g: group, v,v_1 : gf_q) : g^v^v_1 = g^v_1^v.
-    proof.
-    have -> :  g^v^v_1 = g^(v*v_1).
-      apply pow_pow.
-    have -> : v*v_1 = v_1*v.
-      apply gf_q_mult_comm.
-      smt(pow_pow).
-  qed.
-
-lemma pow_com_2 (g: group, v,v_1 : gf_q) : g^(v*v_1) = g^(v_1*v).
-    have -> : g^(v*v_1) = g^v^v_1.
-    smt(pow_pow).
-    have -> : g^(v_1*v) = g^v_1^v.
-    smt(pow_pow).
-    apply pow_com.
-  qed.
+    }
+  }.
   
     
 
@@ -295,20 +324,5 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
      qed.
      
 
-module IND_CPA (Enc : ENC, Adv : ADV) = {
- module E = Enc(RO)  (* connect Enc to RO *)
- module A = Adv(RO)  (* connect Adv to RO *)
-
- proc main() : bool = {
-   var b, b' : bool; var x1, x2 : text; var c : cipher;
-   var priv_key : priv; var pub_key : pub;
-  RO.init();
-  (pub_key,priv_key) <@ E.key_gen();
-   (x1, x2) <@ A.choose(pub_key);    (* let A choose plaintexts x1/x2 *)
-   b <$ {0,1};                (* choose boolean b *)
-   c <@ E.enc(pub_key, b ? x1 : x2); (* encrypt x1 if b = true, x2 if b = false *)
-   b' <@ A.guess(c);          (* give ciphertext to A, which returns guess *)
-   return b = b';             (* see if A guessed correctly, winning game *)
- }
-}.
-
+     section.
+     
