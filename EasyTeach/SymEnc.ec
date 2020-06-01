@@ -326,39 +326,62 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
 
      section.
 
-     module GAME_2 (Adv : ADV) = {
+     declare module Adv : ADV{RO}.
+
+     axiom Adv_choose_ll (Or <: RO{Adv}) : islossless Or.f => (islossless Adv(Or).choose /\ islossless Adv(Or).guess).
+
+         
+     local module GAME_1 = {
 
        module A = Adv(Or)
        
        proc main() : bool = {
        var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
-       var priv_key : priv; var pub_key : pub; var ep_key : group;
+       var priv_key : priv; var pub_key : pub;
        Or.init();
        priv_key  <$ dgf_q;
        y <$ dgf_q;
        pub_key <- g ^ priv_key;
-       ep_key <- pub_key ^ y;
          (x1, x2) <@ A.choose(pub_key);
            b <$ {0,1};
-           x3 <- Or.f(ep_key);
+           x3 <@ Or.f(pub_key ^ y);
+           b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
+         return (b=b');
+       }
+     }.
+
+    
+     local module GAME_2 = {
+
+       module A = Adv(Or)
+       
+       proc main() : bool = {
+       var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
+       var priv_key : priv; var pub_key : pub; 
+       Or.init();
+       priv_key  <$ dgf_q;
+       y <$ dgf_q;
+       pub_key <- g ^ priv_key;
+         (x1, x2) <@ A.choose(pub_key);
+           b <$ {0,1};
+           x3 <$ dtext;
            b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
          return (b=b');
        }
      }.
 
 
-     module GAME_3 (Adv : ADV) = {
+    local  module GAME_3 (Adv : ADV) = {
        
        module A = Adv(Or)
        
        proc main() : bool = {
        var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
-       var priv_key : priv; var pub_key : pub; var ep_key : group;
+       var priv_key : priv; var pub_key : pub;
        Or.init();
        priv_key  <$ dgf_q;
        y <$ dgf_q;
        pub_key <- g ^ priv_key;
-       ep_key <- pub_key ^ y;
          (x1, x2) <@ A.choose(pub_key);
            x3 <$ dtext;
            b' <- A.guess(g ^ y, x3);
@@ -366,6 +389,22 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
          return (b=b');
        }
      }.
+
+     local lemma IND_CPA_G1 &m : Pr[IND_CPA(Enc, Adv).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
+         proof.
+           byequiv => //.
+           proc.
+           inline*.
+           sp.
+         seq 2 3: (Or.mp{2} = empty /\ RO.mp{1} = empty /\ pub_key{1} = g ^ priv_key{1} /\ pub_key{2} = g ^ priv_key{2}).
+           auto.
+           progress.
+           apply lossless.
+           call (_ :  Or.mp{2} = empty /\ RO.mp{1} = empty).
+          
+         
+         
+         
 
 
      
