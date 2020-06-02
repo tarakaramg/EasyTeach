@@ -200,17 +200,29 @@ module type ADV_LCDH = {
   proc main (x1 : pub, x2 : group) : group list
 }.
 
+
 module type GAME_LCDH = {
 
   proc main () : bool
 }.
 
+module type RO_L = {
+  
+  proc * init() : unit
+  proc f(x : group) : text
+  proc g(x : group) : text
 
-module Or : RO = {
+}.
+
+
+module Or : RO_L = {
   
   var mp : (group, text) fmap
+  var k : group list
     proc init() : unit = {
-    mp <- empty;  (* empty map *)
+  mp <- empty;  (* empty map *)
+  k <- [];
+    
     }
         proc f(x : group) : text = {
         var y : text;
@@ -220,18 +232,40 @@ module Or : RO = {
       }
           return oget mp.[x];
     }
-  }.
+
+        proc g(x : group) : text = {
+        var y : text;
+        k <- x :: k;
+        y <@ f(x);
+        return(y);
+      }
+      
+    }.
+    
+
+    
+ module type ADL (Or : RO_L) = {
+ (* choose a pair of plaintexts, x1/x2 *)
+ proc * choose(pub_key : pub) : text * text {Or.g}
+
+ (* given ciphertext c based on a random boolean b (the encryption
+    using EO.genc of x1 if b = true, the encryption of x2 if b =
+    false), try to guess b *)
+ proc guess(c : cipher) : bool {Or.g}
+}.
 
 
-  module Adv_LCDH (Adv : ADV)  : ADV_LCDH = {
+  module Adv_LCDH (Adv : ADL)  : ADV_LCDH = {
     (* LCDH adversary, takes g^x and g^y, return list of g^xy guesses using ADV choose and guess procedures*)
     module A = Adv(Or)
+
       proc main (pub_key : pub, x2 : group) : group list = {
-      var k : group list <- []; var text_1, text_2, text_3 : text; var b : bool;
+      var text_1, text_2, text_3 : text; var b : bool;
+      Or.init();
       (text_1, text_2) <@ A.choose(pub_key);
         text_3 <$ dtext;
         b <@ A.guess(x2, text_3);
-        return k;
+        return Or.k;
       }
   }.
   
@@ -326,9 +360,10 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
 
      section.
 
-     declare module Adv : ADV{RO}.
+     declare module Adv : ADL{Or}.
+     declare module Adv_I : ADV{RO}.
 
-     axiom Adv_choose_ll (Or <: RO{Adv}) : islossless Or.f => (islossless Adv(Or).choose /\ islossless Adv(Or).guess).
+     axiom Adv_choose_ll (Or <: RO_L{Adv}) : islossless Or.f => (islossless Adv(Or).choose /\ islossless Adv(Or).guess).
 
          
      local module GAME_1 = {
@@ -390,7 +425,7 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
        }
      }.
 
-     local lemma IND_CPA_G1 &m : Pr[IND_CPA(Enc, Adv).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
+     local lemma IND_CPA_G1 &m : Pr[IND_CPA(Enc, Adv_I).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
          proof.
            byequiv => //.
            proc.
