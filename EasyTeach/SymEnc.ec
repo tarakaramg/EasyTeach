@@ -377,7 +377,8 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                ROL.mp.[pub_key ^ y] <- x3;
              }
                  x3 <- oget ROL.mp.[pub_key^y];
-                 b' <@ A.guess(g ^ y, x3 ++ (b ? x1 : x2));
+             c <- (g^y, x3 ++ (b ? x1 : x2));
+                 b' <@ A.guess(c);
              return (b=b');
            }
          }.
@@ -441,12 +442,16 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                    progress.
                    auto.
                    progress.
+                   admit.
+seq 2 1: (={b} /\ (A{1} = pub_key{1})).                 
                    auto.
-                   sim.
-                   sim.
-                   auto.
-                   progress.
+                   seq 7 3: (c{1} = c{2}). 
+                   seq 3 0: ( c_1{1} = g^eph_key{1} /\ x{1}=A{1}^eph_key{1}).
                  
+                   auto.
+                   
+                 
+                   progress.
                  
                qed.
                
