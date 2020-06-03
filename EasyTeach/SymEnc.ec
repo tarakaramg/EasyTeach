@@ -451,8 +451,8 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                    trivial.
                    trivial.
                qed.
-
-               local lemma G1_G2_equiv : equiv[GAME_1.main ~ GAME_2.main : true ==> ={ROL.mp}/\(!ROL.bad_flag{1}  => ={res})].
+print fdom.
+               local lemma G1_G2_equiv : equiv[GAME_1.main ~ GAME_2.main : true ==> ={ROL.bad_key}/\(!ROL.bad_flag{1}  => ={res})].
                    proof.
                      proc.
                      sp.
@@ -465,10 +465,11 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                      sim.
                      auto.
                      if{1}.
-                     seq 3 1: (x3{1} = oget ROL.mp{1}.[pub_key{1}^eph_key{1}] /\ ={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b} ).
+                     seq 3 1: (x3{1} = oget ROL.mp{1}.[pub_key{1}^eph_key{1}] /\ ={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b, ROL.mp}).
                      auto.
-                   sim.
+                   
                      progress.
+                   
                      apply dtext_lossless.
                      sp.
                    seq 0 1: (={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b, ROL.mp}).
