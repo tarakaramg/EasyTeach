@@ -389,17 +389,19 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
              module A = Adv(ROL)
              
                proc main() : bool = {
-               var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
+               var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var eph_key : gf_q;
                var priv_key : priv; var pub_key : pub; 
-               ROL.init();
+               ROL.mp <- empty;  (* empty map *)
+               ROL.bad_flag <- false;
                priv_key  <$ dgf_q;
-               y <$ dgf_q;
+               eph_key  <$ dgf_q;
                pub_key <- g ^ priv_key;
-               ROL.bad_key <- pub_key ^ y;
+               ROL.bad_key <- pub_key ^ eph_key;
                (x1, x2) <@ A.choose(pub_key);
                  b <$ {0,1};
                  x3 <$ dtext;
-                 b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
+                 c <- (g^eph_key, x3 ++ (b ? x1 : x2));
+                 b' <- A.guess(c);
                return (b=b');
              }
            }.
@@ -432,7 +434,7 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                    sp.
                    swap{1} 7 -5.
                    swap{1} 5 -2.
-                 swap{2} 6 -3.
+                   swap{2} 6 -3.
                    seq 4 5:(ROL.bad_key{2} = pub_key{2}^eph_key{2} /\ pub_key{2} = g^priv_key{2} /\ pub_key{1} = g^priv_key{1} /\ RO.mp{1} = ROL.mp{2} /\ ={pub_key, eph_key,priv_key} /\ ={b}).
                    auto. progress.
                    seq 1 1: (={pub_key,b,x1,x2, eph_key,priv_key} /\ RO.mp{1} = ROL.mp{2} /\ ={glob Adv}).
@@ -449,9 +451,32 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                    trivial.
                    trivial.
                qed.
- 
-               
-               local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m :res  /\ (ROL.bad_flag = true)] .
+
+               local lemma G1_G2_equiv : equiv[GAME_1.main ~ GAME_2.main : true ==> ={ROL.mp}/\(!ROL.bad_flag{1}  => ={res})].
                    proof.
+                     proc.
+                     sp.
+                     swap 6 -1.
+                     seq 5 5: (={priv_key,eph_key, ROL.bad_key, pub_key, b, ROL.mp}).
+                     auto.
+                     seq 1 1: (={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b, ROL.mp}).
+                     call (_ : ={ROL.mp}).
+                     proc.
+                     sim.
+                     auto.
+                     if{1}.
+                     seq 3 1: (x3{1} = oget ROL.mp{1}.[pub_key{1}^eph_key{1}] /\ ={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b} ).
+                     auto.
+                   sim.
+                     progress.
+                     apply dtext_lossless.
+                     sp.
+                   seq 0 1: (={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b, ROL.mp}).
+                     auto.
+                     progress.
+                     apply dtext_lossless.
                    
                    
+                   local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m : ROL.bad_flag] .
+                       proof.
+                       
