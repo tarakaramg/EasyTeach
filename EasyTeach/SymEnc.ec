@@ -374,9 +374,10 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                b <$ {0,1};
                if (! pub_key ^ y \in ROL.mp) {   (* give x a random value in *)
                x3 <$ dtext;  (* mp if not already in mp's domain *)
-               ROL.mp.[pub_key] <- x3;
+               ROL.mp.[pub_key ^ y] <- x3;
              }
-                 b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
+                 x3 <- oget ROL.mp.[pub_key^y];
+                 b' <@ A.guess(g ^ y, x3 ++ (b ? x1 : x2));
              return (b=b');
            }
          }.
@@ -425,28 +426,31 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
              local lemma IND_CPA_G1 &m : Pr[IND_CPA(Enc, Adv).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
                  proof.
                    byequiv. 
-                   proc.
+                   proc*.
                    inline*.
                    sp.
-                   seq 2 4: ( pub_key{1} = g^priv_key{1} /\ pub_key{2} = g^priv_key{2} /\ ROL.mp{2} = RO.mp{1}).
-                   wp.                   auto.
-                   progress.
-                   apply lossless.
-                 seq 1 1: (  pub_key{1} = g ^ priv_key{1} /\
-  pub_key{2} = g ^ priv_key{2} /\ ROL.mp{2} = RO.mp{1}).
+                 swap{1} 7 -4.
+                   wp.
+                   seq 3 4: ( ={priv_key} /\ eph_key{1} = y{2}/\  ROL.mp{2} = RO.mp{1}).
+                   auto.
+                
+                   seq 1 1: ( ROL.mp{2} = RO.mp{1} /\ ={pub_key} /\ ={priv_key}).
                    call (_ : ROL.mp{2} = RO.mp{1}).
-                   proc*.
+                   proc.
+                   sim.
+                   progress.
+                   auto.
+                   progress.
+                   auto.
+                   sim.
                    sim.
                    auto.
                    progress.
-                   admit.
-                   admit.
-                   trivial.
-                   trivial.
                  
-qed.
-                     
-local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m :res  /\ (ROL.bad_flag = true)] .
-    proof.
-    
-    
+                 
+               qed.
+               
+               local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m :res  /\ (ROL.bad_flag = true)] .
+                   proof.
+                   
+                   
