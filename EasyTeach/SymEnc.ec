@@ -105,10 +105,10 @@ module (Enc : ENC) (RO : RO) = {
  }
 
  proc enc(A: pub, plain_text : text) : cipher ={
-     var k : gf_q; var c_1 : group; var c_2 : text;
-     k <$ dgf_q; (* Ephemeral key *)
-     c_1 <- g^k;
-     c_2 <@ RO.f(A^k); c_2 <- c_2 ++ plain_text;
+     var eph_key : gf_q; var c_1 : group; var c_2 : text;
+     eph_key <$ dgf_q; (* Ephemeral key *)
+     c_1 <- g^eph_key;
+     c_2 <@ RO.f(A^eph_key); c_2 <- c_2 ++ plain_text;
      return (c_1, c_2); (* Here A is Alice public key A = g^priv_key , this returns c_1=g^k and c_2= RO.f(A^k)++message *)
  }
 
@@ -197,7 +197,7 @@ module IND_CPA (Enc : ENC, Adv : ADV) = {
 
 module type ADV_LCDH = {
 
-  proc main (x1 : pub, x2 : group) : group list
+  proc main (x1 : pub, x2 : group) : group fset
 }.
 
 
@@ -206,22 +206,16 @@ module type GAME_LCDH = {
   proc main () : bool
 }.
 
-module type RO_L = {
-  
-  proc * init() : unit
-  proc f(x : group) : text
-  proc g(x : group) : text
+print fset.
+search fdom.
 
-}.
-
-
-module Or : RO_L = {
+  module Adv_LCDH (Adv : ADV)  : ADV_LCDH = {
+    (* LCDH adversary, takes g^x and g^y, return list of g^xy guesses using ADV choose and guess procedures*)
+    module Or : RO = {
   
   var mp : (group, text) fmap
-  var k : group list
     proc init() : unit = {
   mp <- empty;  (* empty map *)
-  k <- [];
     
     }
         proc f(x : group) : text = {
@@ -232,40 +226,18 @@ module Or : RO_L = {
       }
           return oget mp.[x];
     }
-
-        proc g(x : group) : text = {
-        var y : text;
-        k <- x :: k;
-        y <@ f(x);
-        return(y);
-      }
       
-    }.
-    
-
-    
- module type ADL (Or : RO_L) = {
- (* choose a pair of plaintexts, x1/x2 *)
- proc * choose(pub_key : pub) : text * text {Or.g}
-
- (* given ciphertext c based on a random boolean b (the encryption
-    using EO.genc of x1 if b = true, the encryption of x2 if b =
-    false), try to guess b *)
- proc guess(c : cipher) : bool {Or.g}
-}.
-
-
-  module Adv_LCDH (Adv : ADL)  : ADV_LCDH = {
-    (* LCDH adversary, takes g^x and g^y, return list of g^xy guesses using ADV choose and guess procedures*)
+  }
+  
     module A = Adv(Or)
 
-      proc main (pub_key : pub, x2 : group) : group list = {
+      proc main (pub_key : pub, x2 : group) : group fset = {
       var text_1, text_2, text_3 : text; var b : bool;
       Or.init();
       (text_1, text_2) <@ A.choose(pub_key);
         text_3 <$ dtext;
         b <@ A.guess(x2, text_3);
-        return Or.k;
+        return fdom Or.mp;
       }
   }.
   
@@ -275,8 +247,8 @@ module Or : RO_L = {
     
   (* LCDH Game, we randomly pick x,y, and pass g^x, g^y to LCDH Adversary, which returns a list *)
     proc main() : bool = {
-    var x,y : gf_q; var l : group list;
-    Or.init();
+    var x,y : gf_q; var l : group fset;
+    RO.init();
     x <$ dgf_q;
     y <$ dgf_q;
     l <@ Adv.main( g ^ x, g ^ y);
@@ -297,7 +269,7 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
      progress.
      apply lossless.
      sp.    
-     seq 3: (plain_text = x /\ c_1 = g ^ k /\ x0 = g ^ (priv_key * k)).
+     seq 3: (plain_text = x /\ c_1 = g ^ eph_key /\ x0 = g ^ (priv_key * eph_key)).
      auto.
      auto.
      progress.
@@ -306,7 +278,7 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
      trivial.   
      if.
      seq 1 : 
-       (plain_text = x /\ c_1 = g ^ k /\ x0 = g ^ (priv_key * k) /\
+       (plain_text = x /\ c_1 = g ^ eph_key /\ x0 = g ^ (priv_key * eph_key) /\
         x0 \notin RO.mp).
      auto.
      auto; progress; apply dtext_lossless.
@@ -360,87 +332,121 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
 
      section.
 
-     declare module Adv : ADL{Or}.
-     declare module Adv_I : ADV{RO}.
+     declare module Adv : ADV{RO}.
 
-     axiom Adv_choose_ll (Or <: RO_L{Adv}) : islossless Or.f => (islossless Adv(Or).choose /\ islossless Adv(Or).guess).
+     axiom Adv_choose_ll (Or <: RO{Adv}) : islossless Or.f => (islossless Adv(Or).choose /\ islossless Adv(Or).guess).
+
+     local module ROL : RO = {
+         
+       var mp : (group, text) fmap
+       var bad_flag : bool
+       var eph_key : group
+         
+       proc init() : unit = {
+         
+         }
+             proc f(x : group) : text = {
+             var y : text;
+           if ( x = eph_key) bad_flag <- true;
+             if (! x \in mp) {   (* give x a random value in *)
+             y <$ dtext;  (* mp if not already in mp's domain *)
+             mp.[x] <- y;
+           }
+               return oget mp.[x];
+         }
+         
+       }.
+       
+       local module GAME_1 = {
+
+           module A = Adv(ROL)
+           
+             proc main() : bool = {
+             var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
+             var priv_key : priv; var pub_key : pub;
+             ROL.mp <- empty;  (* empty map *)
+             ROL.bad_flag <- false;
+             priv_key  <$ dgf_q;
+             pub_key <- g ^ priv_key;
+             y <$ dgf_q;
+             ROL.eph_key <- pub_key ^ y;
+             (x1, x2) <@ A.choose(pub_key);
+               b <$ {0,1};
+               if (! pub_key ^ y \in ROL.mp) {   (* give x a random value in *)
+               x3 <$ dtext;  (* mp if not already in mp's domain *)
+               ROL.mp.[pub_key] <- x3;
+             }
+                 b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
+             return (b=b');
+           }
+         }.
 
          
-     local module GAME_1 = {
+         local module GAME_2 = {
 
-       module A = Adv(Or)
-       
-       proc main() : bool = {
-       var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
-       var priv_key : priv; var pub_key : pub;
-       Or.init();
-       priv_key  <$ dgf_q;
-       y <$ dgf_q;
-       pub_key <- g ^ priv_key;
-         (x1, x2) <@ A.choose(pub_key);
-           b <$ {0,1};
-           x3 <@ Or.f(pub_key ^ y);
-           b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
-         return (b=b');
-       }
-     }.
+             module A = Adv(ROL)
+             
+               proc main() : bool = {
+               var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
+               var priv_key : priv; var pub_key : pub; 
+               ROL.init();
+               priv_key  <$ dgf_q;
+               y <$ dgf_q;
+               pub_key <- g ^ priv_key;
+               ROL.eph_key <- pub_key ^ y;
+               (x1, x2) <@ A.choose(pub_key);
+                 b <$ {0,1};
+                 x3 <$ dtext;
+                 b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
+               return (b=b');
+             }
+           }.
 
+
+           local  module GAME_3 (Adv : ADV) = {
+               
+               module A = Adv(ROL)
+               
+                 proc main() : bool = {
+                 var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
+                 var priv_key : priv; var pub_key : pub;
+                 ROL.init();
+                 priv_key  <$ dgf_q;
+                 y <$ dgf_q;
+                 pub_key <- g ^ priv_key;
+                 (x1, x2) <@ A.choose(pub_key);
+                   x3 <$ dtext;
+                   b' <- A.guess(g ^ y, x3);
+                   b <$ {0,1};
+                 return (b=b');
+               }
+             }.
+
+             local lemma IND_CPA_G1 &m : Pr[IND_CPA(Enc, Adv).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
+                 proof.
+                   byequiv. 
+                   proc.
+                   inline*.
+                   sp.
+                   seq 2 4: ( pub_key{1} = g^priv_key{1} /\ pub_key{2} = g^priv_key{2} /\ ROL.mp{2} = RO.mp{1}).
+                   wp.                   auto.
+                   progress.
+                   apply lossless.
+                 seq 1 1: (  pub_key{1} = g ^ priv_key{1} /\
+  pub_key{2} = g ^ priv_key{2} /\ ROL.mp{2} = RO.mp{1}).
+                   call (_ : ROL.mp{2} = RO.mp{1}).
+                   proc*.
+                   sim.
+                   auto.
+                   progress.
+                   admit.
+                   admit.
+                   trivial.
+                   trivial.
+                 
+qed.
+                     
+local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m :res  /\ (ROL.bad_flag = true)] .
+    proof.
     
-     local module GAME_2 = {
-
-       module A = Adv(Or)
-       
-       proc main() : bool = {
-       var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
-       var priv_key : priv; var pub_key : pub; 
-       Or.init();
-       priv_key  <$ dgf_q;
-       y <$ dgf_q;
-       pub_key <- g ^ priv_key;
-         (x1, x2) <@ A.choose(pub_key);
-           b <$ {0,1};
-           x3 <$ dtext;
-           b' <- A.guess(g ^ y, x3 ++ (b ? x1 : x2));
-         return (b=b');
-       }
-     }.
-
-
-    local  module GAME_3 (Adv : ADV) = {
-       
-       module A = Adv(Or)
-       
-       proc main() : bool = {
-       var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
-       var priv_key : priv; var pub_key : pub;
-       Or.init();
-       priv_key  <$ dgf_q;
-       y <$ dgf_q;
-       pub_key <- g ^ priv_key;
-         (x1, x2) <@ A.choose(pub_key);
-           x3 <$ dtext;
-           b' <- A.guess(g ^ y, x3);
-           b <$ {0,1};
-         return (b=b');
-       }
-     }.
-
-     local lemma IND_CPA_G1 &m : Pr[IND_CPA(Enc, Adv_I).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
-         proof.
-           byequiv => //.
-           proc.
-           inline*.
-           sp.
-         seq 2 3: (Or.mp{2} = empty /\ RO.mp{1} = empty /\ pub_key{1} = g ^ priv_key{1} /\ pub_key{2} = g ^ priv_key{2}).
-           auto.
-           progress.
-           apply lossless.
-           call (_ :  Or.mp{2} = empty /\ RO.mp{1} = empty).
-          
-         
-         
-         
-
-
-     
-
+    
