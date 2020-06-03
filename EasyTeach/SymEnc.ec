@@ -104,11 +104,11 @@ module (Enc : ENC) (RO : RO) = {
    return (g^priv_k, priv_k); (*x is Alice's  private key *)
  }
 
- proc enc(A: pub, plain_text : text) : cipher ={
+ proc enc(pub_key: pub, plain_text : text) : cipher ={
      var eph_key : gf_q; var c_1 : group; var c_2 : text;
      eph_key <$ dgf_q; (* Ephemeral key *)
      c_1 <- g^eph_key;
-     c_2 <@ RO.f(A^eph_key); c_2 <- c_2 ++ plain_text;
+     c_2 <@ RO.f(pub_key^eph_key); c_2 <- c_2 ++ plain_text;
      return (c_1, c_2); (* Here A is Alice public key A = g^priv_key , this returns c_1=g^k and c_2= RO.f(A^k)++message *)
  }
 
@@ -340,14 +340,14 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
          
        var mp : (group, text) fmap
        var bad_flag : bool
-       var eph_key : group
+       var bad_key : group
          
        proc init() : unit = {
          
          }
              proc f(x : group) : text = {
              var y : text;
-           if ( x = eph_key) bad_flag <- true;
+           if ( x = bad_key) bad_flag <- true;
              if (! x \in mp) {   (* give x a random value in *)
              y <$ dtext;  (* mp if not already in mp's domain *)
              mp.[x] <- y;
@@ -362,22 +362,22 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
            module A = Adv(ROL)
            
              proc main() : bool = {
-             var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
+             var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var eph_key : gf_q;
              var priv_key : priv; var pub_key : pub;
              ROL.mp <- empty;  (* empty map *)
              ROL.bad_flag <- false;
              priv_key  <$ dgf_q;
+             eph_key <$ dgf_q;
              pub_key <- g ^ priv_key;
-             y <$ dgf_q;
-             ROL.eph_key <- pub_key ^ y;
+             ROL.bad_key <- pub_key ^ eph_key;
              (x1, x2) <@ A.choose(pub_key);
                b <$ {0,1};
-               if (! pub_key ^ y \in ROL.mp) {   (* give x a random value in *)
+               if (! pub_key ^ eph_key \in ROL.mp) {   (* give x a random value in *)
                x3 <$ dtext;  (* mp if not already in mp's domain *)
-               ROL.mp.[pub_key ^ y] <- x3;
+               ROL.mp.[pub_key ^ eph_key] <- x3;
              }
-                 x3 <- oget ROL.mp.[pub_key^y];
-             c <- (g^y, x3 ++ (b ? x1 : x2));
+                 x3 <- oget ROL.mp.[pub_key^eph_key];
+             c <- (g^eph_key, x3 ++ (b ? x1 : x2));
                  b' <@ A.guess(c);
              return (b=b');
            }
@@ -395,7 +395,7 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                priv_key  <$ dgf_q;
                y <$ dgf_q;
                pub_key <- g ^ priv_key;
-               ROL.eph_key <- pub_key ^ y;
+               ROL.bad_key <- pub_key ^ y;
                (x1, x2) <@ A.choose(pub_key);
                  b <$ {0,1};
                  x3 <$ dtext;
@@ -427,33 +427,29 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
              local lemma IND_CPA_G1 &m : Pr[IND_CPA(Enc, Adv).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
                  proof.
                    byequiv. 
-                   proc*.
+                   proc.
                    inline*.
                    sp.
-                 swap{1} 7 -4.
-                   wp.
-                   seq 3 4: ( ={priv_key} /\ eph_key{1} = y{2}/\  ROL.mp{2} = RO.mp{1}).
-                   auto.
-                
-                   seq 1 1: ( ROL.mp{2} = RO.mp{1} /\ ={pub_key} /\ ={priv_key}).
-                   call (_ : ROL.mp{2} = RO.mp{1}).
+                   swap{1} 7 -5.
+                   swap{1} 5 -2.
+                 swap{2} 6 -3.
+                   seq 4 5:(ROL.bad_key{2} = pub_key{2}^eph_key{2} /\ pub_key{2} = g^priv_key{2} /\ pub_key{1} = g^priv_key{1} /\ RO.mp{1} = ROL.mp{2} /\ ={pub_key, eph_key,priv_key} /\ ={b}).
+                   auto. progress.
+                   seq 1 1: (={pub_key,b,x1,x2, eph_key,priv_key} /\ RO.mp{1} = ROL.mp{2} /\ ={glob Adv}).
+                   call (_ : RO.mp{1} = ROL.mp{2}).
                    proc.
                    sim.
+                   auto.
+                   sim.
+                   wp ;sp.
+                   if.
                    progress.
                    auto.
                    progress.
-                   admit.
-seq 2 1: (={b} /\ (A{1} = pub_key{1})).                 
-                   auto.
-                   seq 7 3: (c{1} = c{2}). 
-                   seq 3 0: ( c_1{1} = g^eph_key{1} /\ x{1}=A{1}^eph_key{1}).
-                 
-                   auto.
-                   
-                 
-                   progress.
-                 
+                   trivial.
+                   trivial.
                qed.
+ 
                
                local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m :res  /\ (ROL.bad_flag = true)] .
                    proof.
