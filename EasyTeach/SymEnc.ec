@@ -452,31 +452,46 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
                    trivial.
                qed.
 print fdom.
-               local lemma G1_G2_equiv : equiv[GAME_1.main ~ GAME_2.main : true ==> ={ROL.bad_key}/\(!ROL.bad_flag{1}  => ={res})].
+               local lemma G1_G2_equiv : equiv[GAME_1.main ~ GAME_2.main : true ==> ={ROL.bad_flag}/\(!ROL.bad_flag{1}  => ={res})].
                    proof.
                      proc.
                      sp.
                      swap 6 -1.
-                     seq 5 5: (={priv_key,eph_key, ROL.bad_key, pub_key, b, ROL.mp}).
+                     seq 5 5: (={priv_key,eph_key, ROL.bad_key, ROL.bad_flag, pub_key, b, ROL.mp} /\ ! ROL.bad_flag{1} /\ ROL.bad_key{1} = pub_key{1}^eph_key{1} /\ pub_key{1} = g^priv_key{1}).
                      auto.
-                     seq 1 1: (={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b, ROL.mp}).
-                     call (_ : ={ROL.mp}).
-                     proc.
-                     sim.
-                     auto.
-                     if{1}.
-                     seq 3 1: (x3{1} = oget ROL.mp{1}.[pub_key{1}^eph_key{1}] /\ ={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b, ROL.mp}).
-                     auto.
-                   
-                     progress.
-                   
-                     apply dtext_lossless.
-                     sp.
-                   seq 0 1: (={priv_key,eph_key, x1,x2,ROL.bad_key, pub_key, b, ROL.mp}).
-                     auto.
-                     progress.
-                     apply dtext_lossless.
-                   
+                     seq 1 1: (={priv_key,eph_key, ROL.bad_key, ROL.bad_flag, pub_key, b, ROL.mp} /\  ROL.bad_key{1} = pub_key{1}^eph_key{1} /\ pub_key{1} = g^priv_key{1} /\ ={glob Adv} /\ ={x1,x2}).
+                     call (_ : ={ROL.bad_flag, ROL.bad_key, ROL.mp} /\ (ROL.bad_flag{2} = true 
+                       => ROL.bad_key{2}  \in ROL.mp{2}) ).
+                         proc.
+                         sp.               
+                         if.
+                         progress. smt(). smt().
+                         auto.
+                         progress.
+                         smt().
+                         smt().
+                         smt().
+                         smt().
+                         apply mem_set.
+                         smt(). 
+                         auto.                   
+                         progress.
+                         smt().
+                         smt().
+                         smt().
+                         smt().                    
+                         smt().
+                         auto.
+                         progress.
+                         smt().   
+                         seq 1 1: (  ={priv_key, eph_key, ROL.bad_key, ROL.bad_flag, pub_key, b} /\
+                         ROL.bad_key{1} = pub_key{1} ^ eph_key{1} /\
+                     pub_key{1} = g ^ priv_key{1} /\ ={glob Adv, x1, x2, x3}).
+                         auto.
+                         if{1}.
+                         auto.
+                         progress.
+                         apply dtext_lossless.
                    
                    local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m : ROL.bad_flag] .
                        proof.
