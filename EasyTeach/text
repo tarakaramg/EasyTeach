@@ -1,0 +1,5 @@
+/\ (ROL.bad_key{2} \in
+ ROL.bad_flag{2} = true
+
+ ROL.bad_flag{2} = true /\
+       x{2} = ROL.bad_key{2} => x{2} \in ROL.mp{2}
