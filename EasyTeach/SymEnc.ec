@@ -336,7 +336,10 @@ section.
 declare module Adv : ADV{RO}.
 
 axiom Adv_choose_ll (Or <: RO{Adv}) :
-   islossless Or.f => (islossless Adv(Or).choose /\ islossless Adv(Or).guess).
+  islossless Or.f => islossless Adv(Or).choose.
+
+axiom Adv_guess_ll (Or <: RO{Adv}) :
+  islossless Or.f => islossless Adv(Or).guess.
 
 
 local module ROL : RO = {
@@ -486,7 +489,7 @@ local lemma G1_G2_equiv :
         call (_ : (={ROL.bad_flag, ROL.bad_key, ROL.mp} )/\
       (!ROL.bad_flag{2} => ROL.bad_key{2}  \notin ROL.mp{2})).
         proc.
-        sp.               
+        sp.              
     if => //.
         auto.
         progress.
@@ -501,45 +504,63 @@ local lemma G1_G2_equiv :
         apply mem_empty.
     
         seq 3 2 : (={pub_key, priv_key, eph_key, b, ROL.bad_key, ROL.bad_flag, glob Adv, x1,x2} /\
-        ROL.bad_key{1} \in ROL.mp{1}/\ !ROL.bad_flag{2} => (={c} /\
+         !ROL.bad_flag{2} => (={c} /\
         ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3{1}]) /\
         ROL.bad_key{1} = pub_key{1}^eph_key{1} ) .
         if{1}.
         wp.
         auto.
         progress.
-      rewrite get_set_sameE.  
-      smt(). rewrite get_set_sameE.
-      auto.
-      progress.
-      auto.
-      progress.
-      apply dtext_lossless.
-      smt().
-      smt().
-        seq 1 1:  (={pub_key, priv_key, eph_key, b, ROL.bad_key, ROL.bad_flag, glob Adv, x1,x2}
-        /\  ROL.bad_key{1} \in ROL.mp{1}
-        /\ !ROL.bad_flag{2} => (={c} /\
-        ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3{1}]) /\
-        ROL.bad_key{1} = pub_key{1}^eph_key{1}).
+        rewrite get_set_sameE.  
+        smt(). rewrite get_set_sameE.
+        auto.
+        progress.
+        auto.
+        progress.
+        apply dtext_lossless.
+        smt().
+        smt().
 
-         call (_ : (={ROL.bad_flag, ROL.bad_key} )/\
-         (!ROL.bad_flag{2} => ROL.bad_key{2}  \notin ROL.mp{2})).
-           proc.
-           auto.
-           progress.
-           sp.
-           if.
-           auto.
-           progress.
-           smt().
-       
-       
-       
-           sim.
-           progress.
-           smt().  
-       
+        exists* x3{1}.
+        elim* => x3_L.
+    
+        (*call  (_ :   ={ROL.bad_flag, ROL.bad_key} /\
+        !ROL.bad_flag{2} => (={c} /\  ROL.bad_key{2}  \notin ROL.mp{2} /\ ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3_L]) ==> (={ROL.bad_flag}/\(!ROL.bad_flag{1}  => ={res}))).*)
+
+   
+        call (_ : (={ROL.bad_flag, ROL.bad_key, glob Adv})/\
+      (!ROL.bad_flag{2} => (={c} /\ ROL.bad_key{2}  \notin ROL.mp{2}/\
+        ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3_L])) ==>
+      (={ROL.bad_flag}/\(!ROL.bad_flag{1}  => ={res}))).
+    
+    
+        proc (ROL.bad_flag)
+    (={ROL.bad_flag, ROL.bad_key} /\
+      ROL.bad_key{2} \notin ROL.mp{2} /\
+      ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3_L])
+    (ROL.bad_flag{1}).
+    progress.
+    smt().
+      smt().
+      smt().
+      progress.
+      smt().
+      smt().
+      apply Adv_guess_ll.
+      proc.
+      sp.
+      if => //.
+      progress.
+      smt().
+    
+    
+    
+    
+
+    
+    
+    
+    
 
 
 local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m : ROL.bad_flag] .
