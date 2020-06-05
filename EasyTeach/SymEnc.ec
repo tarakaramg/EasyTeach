@@ -484,10 +484,10 @@ local lemma G1_G2_equiv :
       seq 1 1: ((={priv_key,eph_key, ROL.bad_key, ROL.bad_flag, pub_key, b, ROL.mp, x1,x2} /\
       ROL.bad_key{1} = pub_key{1}^eph_key{1} /\
         pub_key{1} = g^priv_key{1} /\ ={glob Adv}) /\
-      (!ROL.bad_flag{2} => ROL.bad_key{2}  \notin ROL.mp{2})).
+      (!ROL.bad_flag{1} => ROL.bad_key{2}  \notin ROL.mp{2})).
     
         call (_ : (={ROL.bad_flag, ROL.bad_key, ROL.mp} )/\
-      (!ROL.bad_flag{2} => ROL.bad_key{2}  \notin ROL.mp{2})).
+      (!ROL.bad_flag{1} => ROL.bad_key{2}  \notin ROL.mp{2})).
         proc.
         sp.              
     if => //.
@@ -500,11 +500,10 @@ local lemma G1_G2_equiv :
         smt().
         auto.
         progress.
-        rewrite pow_pow.
         apply mem_empty.
     
         seq 3 2 : (={pub_key, priv_key, eph_key, b, ROL.bad_key, ROL.bad_flag, glob Adv, x1,x2} /\
-        !ROL.bad_flag{2} => (={c} /\
+        !ROL.bad_flag{1} => (={c} /\
         ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3{2}]) /\
         ROL.bad_key{1} = pub_key{1}^eph_key{1} ) .
         if{1}.
@@ -525,7 +524,7 @@ local lemma G1_G2_equiv :
         elim* => x3_R.
 
         call (_ : ={ROL.bad_flag, ROL.bad_key, glob Adv}/\
-      (!ROL.bad_flag{2} => ={c} /\ ROL.bad_key{2}  \notin ROL.mp{2}/\
+      (!ROL.bad_flag{1} => ={c} /\ ROL.bad_key{2}  \notin ROL.mp{2}/\
         ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3_R]) ==> (* P ==> *)
       ={ROL.bad_flag}/\(!ROL.bad_flag{1}  => ={res})). (* Q *)
     
