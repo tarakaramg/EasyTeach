@@ -438,7 +438,7 @@ local  module GAME_3 (Adv : ADV) = {
 
  local lemma IND_CPA_G1 &m :
      Pr[IND_CPA(Enc, Adv).main() @ &m : res] = Pr[GAME_1.main() @ &m : res].
-     proof.
+     proof. 
        byequiv.
      
        proc.
@@ -448,15 +448,15 @@ local  module GAME_3 (Adv : ADV) = {
        swap{1} 5 -2.
        swap{2} 6 -3.
        seq 4 5:(ROL.bad_key{2} = pub_key{2}^eph_key{2} /\
-       pub_key{2} = g^priv_key{2} /\ pub_key{1} = g^priv_key{1} /\
+       pub_key{2} = g^priv_key{2} /\ pub_key{1} = g^priv_key{1}/\
        RO.mp{1} = ROL.mp{2} /\ ={pub_key, eph_key,priv_key} /\ ={b}).
        auto. progress.
        seq 1 1: (={pub_key,b,x1,x2, eph_key,priv_key} /\
        RO.mp{1} = ROL.mp{2} /\ ={glob Adv}).
-       call (_ : RO.mp{1} = ROL.mp{2}).
+       call (_ : (RO.mp{1} = ROL.mp{2})).
        proc.
        sim.
-       auto.
+       auto. 
        sim.
        wp ;sp.
        if.
@@ -478,18 +478,19 @@ local lemma G1_G2_equiv :
       sp.
       swap 6 -1.
       seq 5 5: (={priv_key,eph_key, ROL.bad_key, ROL.bad_flag, pub_key, b, ROL.mp} /\
-      !ROL.bad_flag{1} /\ ROL.bad_key{1} = pub_key{1}^eph_key{1} /\
+      ROL.bad_key{2} = pub_key{2}^eph_key{2} /\
+      !ROL.bad_flag{1} /\
       pub_key{1} = g^priv_key{1} /\ ROL.mp{1} = empty ).
       auto.
-      seq 1 1: ((={priv_key,eph_key, ROL.bad_key, ROL.bad_flag, pub_key, b, ROL.mp, x1,x2} /\
-      ROL.bad_key{1} = pub_key{1}^eph_key{1} /\
-        pub_key{1} = g^priv_key{1} /\ ={glob Adv}) /\
+      seq 1 1: (={priv_key,eph_key, ROL.bad_key, ROL.bad_flag,
+      pub_key, b, ROL.mp, x1,x2, glob Adv}/\ ROL.bad_key{2} = pub_key{2}^eph_key{2}  /\
+        pub_key{1} = g^priv_key{1}  /\
       (!ROL.bad_flag{1} => ROL.bad_key{2}  \notin ROL.mp{2})).
     
-        call (_ : (={ROL.bad_flag, ROL.bad_key, ROL.mp} )/\
+        call (_ : (={ROL.bad_flag, ROL.bad_key, ROL.mp})/\
       (!ROL.bad_flag{1} => ROL.bad_key{2}  \notin ROL.mp{2})).
         proc.
-        sp.              
+        sp. 
     if => //.
         auto.
         progress.
@@ -503,7 +504,7 @@ local lemma G1_G2_equiv :
         apply mem_empty.
     
         seq 3 2 : (={pub_key, priv_key, eph_key, b, ROL.bad_key, ROL.bad_flag, glob Adv, x1,x2} /\
-        !ROL.bad_flag{1} => (={c} /\
+        (!ROL.bad_flag{1} => ={c} /\
         ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3{2}]) /\
         ROL.bad_key{1} = pub_key{1}^eph_key{1} ) .
         if{1}.
@@ -526,28 +527,85 @@ local lemma G1_G2_equiv :
         call (_ : ={ROL.bad_flag, ROL.bad_key, glob Adv}/\
       (!ROL.bad_flag{1} => ={c} /\ ROL.bad_key{2}  \notin ROL.mp{2}/\
         ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3_R]) ==> (* P ==> *)
-      ={ROL.bad_flag}/\(!ROL.bad_flag{1}  => ={res})). (* Q *)
-    
-    
+      ={ROL.bad_flag, ROL.bad_key}/\(!ROL.bad_flag{1}  => ={res})). (* Q *)
+
         proc (ROL.bad_flag) (*Bad *)
-    (={ROL.bad_flag, ROL.bad_key} /\
-      ROL.bad_key{2} \notin ROL.mp{2} /\
+    ( ={ROL.bad_flag, ROL.bad_key} /\
+      ROL.bad_key{2} \notin ROL.mp{2}  /\
       ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3_R]) (* I *)
-    (ROL.bad_flag{1}). (* J *)
+    (ROL.bad_flag{1}/\ ={ROL.bad_flag, ROL.bad_key}).  (* J *)
     by move => />.
     move => &1 &2.
-      progress.
-      smt().
-      smt().
-
+      by case (ROL.bad_flag{2}).
       apply Adv_guess_ll.
       proc.
       sp.
+      if{1}.
+      if{2}.
+      auto.
+      progress.
+rewrite get_set_sameE.
+by rewrite get_set_sameE //.    
+      rewrite mem_set.
+      smt().
+    search _.[_<-_].[_<-_].
+rewrite set_set_neqE.
+      smt().
+      trivial.
+      auto.
+      progress.
+      apply dtext_lossless.
+      smt.
+
+    search _.[_<-_].[_<-_].
+    rewrite set_setE.
+smt.
+      if{2}.
+      auto.
+      progress.
+      apply dtext_lossless.
+      smt.
+      smt.
+smt.    
+      auto.
+      progress.
+      smt.
+      progress.
+      proc.   
+      sp.
       if.
+      auto.
+      progress.
+      apply dtext_lossless.
+      smt().
+      smt().
+      progress.
+      auto.
+      progress.
+      smt().
+      smt().
+      progress.
+      proc.
+      sp.
+      if.
+      auto.
+      progress.
+      apply dtext_lossless.
+      smt().
+      smt().
+      auto.
       progress.
 
-    
- 
+      smt().
+      smt().
+      auto.
+      progress.
+      smt().
+      have foo: ROL.bad_key{2} = pub_key{2}^eph_key{2}.
+          
+    smt().
+      smt.
+qed.
 
     
 local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m : ROL.bad_flag].
