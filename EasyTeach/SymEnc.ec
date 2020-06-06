@@ -497,16 +497,16 @@ local lemma G1_G2_equiv :
         rewrite mem_set.
         smt().
         auto.
-        progress.
+        progress. 
         smt().
         auto.
         progress.
         apply mem_empty.
     
         seq 3 2 : (={pub_key, priv_key, eph_key, b, ROL.bad_key, ROL.bad_flag, glob Adv, x1,x2} /\
-        (!ROL.bad_flag{1} => ={c} /\
+      (!ROL.bad_flag{1} => ={c} /\
         ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3{2}] /\
-         !ROL.bad_key{2} \in ROL.mp{2}) ) .
+        !ROL.bad_key{2} \in ROL.mp{2}) ) .
         if{1}.
         wp.
         auto.
@@ -519,8 +519,8 @@ local lemma G1_G2_equiv :
         progress.*)
         apply dtext_lossless.
         smt().
-          smt().
-      apply H. trivial.
+        smt().
+        apply H. trivial.
         exists* x3{2}.
         elim* => x3_R.
 
@@ -544,32 +544,35 @@ local lemma G1_G2_equiv :
       if{2}.
       auto.
       progress.
-rewrite get_set_sameE.
-by rewrite get_set_sameE //.    
+      rewrite get_set_sameE.
+      by rewrite get_set_sameE //.    
       rewrite mem_set.
       smt().
     search _.[_<-_].[_<-_].
-rewrite set_set_neqE.
+      rewrite set_set_neqE.
       smt().
       trivial.
       auto.
       progress.
       apply dtext_lossless.
-      smt.
-
-    search _.[_<-_].[_<-_].
-    rewrite set_setE.
-smt.
+    search oget.
+      rewrite get_set_eqE. trivial.
+      smt(mem_set).
+      rewrite set_set_neqE.
+      smt(). 
+      smt(mem_set).
       if{2}.
       auto.
       progress.
       apply dtext_lossless.
-      smt.
-      smt.
-smt.    
+      smt(mem_set).
+      smt(mem_set).
+      smt(mem_set).    
       auto.
       progress.
-      smt.
+    search  _.[_<-_].[_].
+rewrite get_set_neqE.
+      smt(). trivial.
       progress.
       proc.   
       sp.
@@ -599,14 +602,14 @@ smt.
       smt().
       smt().
       auto.
-      progress.
-      smt().smt().
-      (*have foo: ROL.bad_key{2} = pub_key{2}^eph_key{2}.*)
-          
-    smt().
-      smt.
-qed.
+      progress. progress.
+      smt().
+      smt().
+      smt().
+      smt().
+  qed.
 
+  print negb_or.
     
 local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m : ROL.bad_flag].
         
