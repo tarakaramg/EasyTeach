@@ -505,8 +505,8 @@ local lemma G1_G2_equiv :
     
         seq 3 2 : (={pub_key, priv_key, eph_key, b, ROL.bad_key, ROL.bad_flag, glob Adv, x1,x2} /\
         (!ROL.bad_flag{1} => ={c} /\
-        ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3{2}]) /\
-        ROL.bad_key{1} = pub_key{1}^eph_key{1} ) .
+        ROL.mp{1} = ROL.mp{2}.[ROL.bad_key{2} <- x3{2}] /\
+         !ROL.bad_key{2} \in ROL.mp{2}) ) .
         if{1}.
         wp.
         auto.
@@ -519,8 +519,8 @@ local lemma G1_G2_equiv :
         progress.*)
         apply dtext_lossless.
         smt().
-        smt().
-
+          smt().
+      apply H. trivial.
         exists* x3{2}.
         elim* => x3_R.
 
@@ -600,8 +600,8 @@ smt.
       smt().
       auto.
       progress.
-      smt().
-      have foo: ROL.bad_key{2} = pub_key{2}^eph_key{2}.
+      smt().smt().
+      (*have foo: ROL.bad_key{2} = pub_key{2}^eph_key{2}.*)
           
     smt().
       smt.
