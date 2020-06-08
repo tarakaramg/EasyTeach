@@ -8,6 +8,7 @@
 prover ["Z3"].  (* no SMT solvers *)
 
 require import AllCore Distr DBool FSet List SmtMap.
+require import StdOrder.  import RealOrder.
 require import Cyclic_group_prime.
 require import Prime_field.
 import Dgf_q.
@@ -614,6 +615,12 @@ rewrite get_set_neqE.
 local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m : ROL.bad_flag].
         
     proof.
-    
-        
-                                     
+    rewrite (RealOrder.ler_trans Pr[GAME_2.main() @ &m : ROL.bad_flag]).
+byequiv
+    (_ :
+      true ==> ={ROL.bad_flag} /\ ( ={ROL.bad_flag} /\ !ROL.bad_flag{1}  => ={res})):
+  (ROL.bad_flag).
+    by conseq G1_G2_equiv. trivial.  
+    progress. trivial.
+smt(). smt(). trivial.
+qed.
