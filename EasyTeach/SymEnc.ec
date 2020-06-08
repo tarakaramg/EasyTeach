@@ -256,9 +256,6 @@ module  Game_LCDH (Adv : ADV_LCDH) : GAME_LCDH = {
    }
  }.
 
-
-
-
 lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
    proof.
      proc.
@@ -574,7 +571,7 @@ local lemma G1_G2_equiv :
       auto.
       progress.
     search  _.[_<-_].[_].
-rewrite get_set_neqE.
+      rewrite get_set_neqE.
       smt(). trivial.
       progress.
       proc.   
@@ -611,13 +608,10 @@ rewrite get_set_neqE.
       smt().
       smt().
   qed.
-
-  print negb_or.
     
 local lemma G1_G2 &m :`| Pr[GAME_1.main() @ &m: res] - Pr[GAME_2.main() @ &m : res]| <= Pr[GAME_2.main() @ &m : ROL.bad_flag].
         
     proof.
-    rewrite (RealOrder.ler_trans Pr[GAME_2.main() @ &m : ROL.bad_flag]).
 byequiv
     (_ :
       true ==> ={ROL.bad_flag} /\ ( ={ROL.bad_flag} /\ !ROL.bad_flag{1}  => ={res})):
@@ -627,10 +621,7 @@ byequiv
     progress.
     smt().
     smt().
-    trivial.
 qed.
-
-
 
 axiom dtext_fu : is_full dtext.
 axiom dtext_uni : is_uniform dtext.
@@ -655,7 +646,7 @@ axiom dtext_ll : is_lossless dtext.
        swap{2} 4 -3.
        seq 3 3: ( ={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key, glob Adv,pub_key,b,x1,x2,c}).    
        wp.
-     rnd( fun x => x3{1} ++ x).     
+     rnd( fun x => (b{1} ? x1{1} : x2{1}) ++ x).     
        auto.
        progress.
        smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
@@ -664,7 +655,7 @@ axiom dtext_ll : is_lossless dtext.
        apply dtext_fu.
        apply dtext_fu.
        smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
-       admit.     (* ADMIT FIX ME *)
+       smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
        call(_ : ={ROL.mp, ROL.bad_flag, ROL.bad_key}).
        proc.
        sim.
@@ -673,70 +664,41 @@ axiom dtext_ll : is_lossless dtext.
        progress.
    qed.
 
-   
- local lemma G2_G3 &m : Pr[GAME_1.main() @ &m: res] =  1%r/2%r.
+ local lemma G2_Pr &m : Pr[GAME_3.main() @ &m: res] = 1%r/2%r .
      proof.
        byphoare.
        proc.
        sp.
-       (*swap 6 -1.*)
-       seq 6: (ROL.bad_key = pub_key ^ eph_key /\ pub_key = g^priv_key).
-       rnd.
+       rnd (pred1 b').
+       call (_ : true).
+       apply Adv_guess_ll.
+       proc.
+       sp.
+       if.
+       auto.
+       progress.
+       apply dtext_lossless.
        auto.
        progress.
        auto.
        call(_ : true).
        apply Adv_choose_ll.
-       progress.
        proc.
        sp.
        if.
        auto.
        progress.
        apply dtext_lossless.
-       auto.
-       wp.
+       progress.
        auto.
        progress.
        apply lossless.
-       admit. (* admit *)
-       if.
-       call(_ :true).
-       apply Adv_guess_ll.
-       proc.
-       sp.
-       if.
-       auto.
-       progress.
        apply dtext_lossless.
-       auto.
-       auto.     
-       progress.
-       apply dtext_lossless.
-       admit. (*admit *)
-       progress.
-       sp.
-       call(_ : true).
-       apply Adv_guess_ll.
-       proc.
-       sp.
-       if.
-       auto.
-       progress.
-       apply dtext_lossless.
-       auto.
-       auto.
-       progress.
-       admit. (* admit *)
-       auto.
-       progress.
-       auto.
-       admit. (* admit *)
-       trivial.
+       smt.
+       smt().
        trivial.
        trivial.
    qed.
-   
    
      
      
