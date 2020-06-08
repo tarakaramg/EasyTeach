@@ -231,28 +231,28 @@ module Adv_LCDH (Adv : ADV)  : ADV_LCDH = {
 
  module A = Adv(Or)
 
-     proc main (pub_key : pub, x2 : group) : group fset = {
-     var text_1, text_2, text_3 : text; var b : bool;
+     proc main (pub_key : pub, gy : group) : group fset = {
+     var x1, x2, x3 : text; var b : bool; var c : cipher;
      Or.init();
-     (text_1, text_2) <@ A.choose(pub_key);
-       text_3 <$ dtext;
-       b <@ A.guess(x2, text_3);
+     (x1, x2) <@ A.choose(pub_key);
+       x3 <$ dtext;
+     c <- (gy ,x3);
+       b <@ A.guess(c);
        return fdom Or.mp;
      }
  }.
 
 
 
-module  Game_LCDH (Adv : ADV_LCDH) : GAME_LCDH = {
+module  Game_LCDH (Adv_LCDH : ADV_LCDH) : GAME_LCDH = {
 
  (* LCDH Game, we randomly pick x,y, and pass g^x, g^y to LCDH Adversary, which returns a list *)
    proc main() : bool = {
-   var x,y : gf_q; var l : group fset;
-   RO.init();
-   x <$ dgf_q;
-   y <$ dgf_q;
-   l <@ Adv.main( g ^ x, g ^ y);
-   return (g^ (x * y) \in l);
+   var priv_key: priv; var eph_key : gf_q; var l : group fset;
+   priv_key <$ dgf_q;
+   eph_key <$ dgf_q;
+   l <@ Adv_LCDH.main( g ^ priv_key, g ^ eph_key);
+   return (g^ (priv_key * eph_key) \in l);
    }
  }.
 
@@ -664,7 +664,7 @@ axiom dtext_ll : is_lossless dtext.
        progress.
    qed.
 
- local lemma G2_Pr &m : Pr[GAME_3.main() @ &m: res] = 1%r/2%r .
+ local lemma G3_Pr &m : Pr[GAME_3.main() @ &m: res] = 1%r/2%r .
      proof.
        byphoare.
        proc.
@@ -699,7 +699,77 @@ axiom dtext_ll : is_lossless dtext.
        trivial.
        trivial.
    qed.
-   
+
+ local lemma G2_Pr &m : Pr[GAME_2.main() @ &m: res] = 1%r/2%r .
+     proof.
+       rewrite -(G3_Pr &m).
+       apply (G2_G3_equiv &m).
+   qed.
+
+ local lemma G2_G3_bad &m : Pr[GAME_2.main() @ &m : ROL.bad_flag] = Pr[GAME_3.main() @ &m : ROL.bad_flag].
+     proof.
+       byequiv.
+       proc.
+       sp.
+       seq 4 4: (={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key, pub_key} /\
+       ROL.mp{1} = empty /\ pub_key{1} = g ^ priv_key{1} /\
+       ROL.bad_key{1} = pub_key{1} ^ eph_key{1}).
+       auto.
+       seq 1 1: (={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key,pub_key,x1,x2, glob Adv}).
+       call (_ : ={ROL.mp, ROL.bad_key, ROL.bad_flag}). 
+       proc.
+       sim.
+       progress.
+       swap{2} 4 -3.
+       seq 3 3: ( ={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key, glob Adv,pub_key,b,x1,x2,c}).    
+       wp.
+     rnd( fun x => (b{1} ? x1{1} : x2{1}) ++ x).     
+       auto.
+       progress.
+       smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
+       apply dtext_uni.
+       apply dtext_fu.
+       apply dtext_fu.
+       apply dtext_fu.
+       smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
+       smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
+       call(_ : ={ROL.mp, ROL.bad_flag, ROL.bad_key}).
+       proc.
+       sim.
+       auto.
+       progress.
+       progress.
+   qed.
+
+local lemma G3_LCDH_equiv &m : Pr[GAME_3.main() @ &m : ROL.bad_flag]
+    = Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
+    proof.
+      byequiv.
+      proc.
+      sp.
+      inline*.
+seq 5 6: (={priv_key, eph_key, pub_key}).    
+      call(_ : true).
+      proc.
+      sp.
+      sim.
+      progress.
+      admit.
+      admit.
+      admit.
+      trivial.
+      trivial.
+qed.    
+
+local lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r/2%r | <=
+    Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
+    proof.
+    
+    
+
+     
+
+
      
      
      
