@@ -769,12 +769,14 @@ local lemma G3_LCDH_equiv &m : Pr[GAME_3.main() @ &m : ROL.bad_flag]
        auto.
        auto.
        progress.
-smt.   
-smt.       progress.
+       smt(mem_set).
+       smt(mem_set).
+       progress.
        auto.
        progress.
-       smt.
-smt.       auto.
+       smt().
+       smt().
+       auto.
        seq 1 1 : (={priv_key, eph_key, pub_key, c, x3, x1, x2, glob Adv}
       /\ ROL.mp{1} = Adv_LCDH.Or.mp{2}
       /\ gy{2} = g^eph_key{2} /\
@@ -782,22 +784,25 @@ smt.       auto.
        ROL.bad_key{1} = g^(priv_key{1}*eph_key{1})).
       call (_ :  ROL.mp{1} = Adv_LCDH.Or.mp{2} /\ (!ROL.bad_flag{1} <=> ROL.bad_key{1} \notin ROL.mp{1})).
       proc.
-     sp.
-     if.
-     progress.
-     auto.
-     progress.
-     smt.
-smt.     auto.
-     progress.
-     smt.
-smt.     progress.
-     auto.
-     progress.
-       smt.
-trivial. trivial.  
-qed.    
-        
+       sp.
+       if.
+       progress.
+       auto.
+       progress.
+       smt(mem_set).
+       smt(mem_set).
+       auto.
+       progress.
+       smt().
+       smt().
+       progress.
+       auto.
+       progress.  
+       smt(mem_fdom).
+       trivial.
+       trivial.  
+ qed.    
+ 
 
 lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r/2%r | <=
     Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
