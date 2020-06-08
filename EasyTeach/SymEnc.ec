@@ -332,7 +332,7 @@ lemma correctness : phoare[Cor(Enc).main : true ==> res] = 1%r.
 
 section.
 
-declare module Adv : ADV{RO}.
+declare module Adv : ADV{RO, Adv_LCDH}.
 
 axiom Adv_choose_ll (Or <: RO{Adv}) :
   islossless Or.f => islossless Adv(Or).choose.
@@ -751,16 +751,53 @@ local lemma G3_LCDH_equiv &m : Pr[GAME_3.main() @ &m : ROL.bad_flag]
       proc.
       sp.
       inline*.
-seq 5 6: (={priv_key, eph_key, pub_key, x1, x2, glob Adv} /\ ROL.mp{1} = Adv_LCDH.Or.mp{2} /\ Adv_LCDH.Or.mp{2} = empty). 
-      call(_ :  ROL.mp{1} = Adv_LCDH.Or.mp{2}).
+      swap{1} 5 2.
+      swap{2} 6 2.
+      seq 6 7: (={priv_key, eph_key, pub_key, c, x3} /\ ROL.mp{1} = Adv_LCDH.Or.mp{2} /\ Adv_LCDH.Or.mp{2} = empty /\ gy{2} = g^eph_key{2}/\ ROL.bad_key{1} = g^(priv_key{1}*eph_key{1}) /\ (!ROL.bad_flag{1} <=> ROL.bad_key{1} \notin ROL.mp{1})).
+      auto.
+      progress.
+      by rewrite pow_pow //.
+      apply mem_empty.
+      seq 1 1: (={priv_key, eph_key, pub_key, c, x3, x1, x2, glob Adv} /\
+      ROL.mp{1} = Adv_LCDH.Or.mp{2} /\ gy{2} = g^eph_key{2} /\
+      ROL.bad_key{1} = g^(priv_key{1}*eph_key{1}) /\
+     (!ROL.bad_flag{1} <=> ROL.bad_key{1} \notin ROL.mp{1})).
+      call(_ :  ROL.mp{1} = Adv_LCDH.Or.mp{2} /\ (!ROL.bad_flag{1} <=> ROL.bad_key{1} \notin ROL.mp{1})).
       proc.
       sp.
-    sim.
-      if.    
-      progress.
-
-    
+       if.
+       auto.
+       auto.
+       progress.
+smt.   
+smt.       progress.
+       auto.
+       progress.
+       smt.
+smt.       auto.
+       seq 1 1 : (={priv_key, eph_key, pub_key, c, x3, x1, x2, glob Adv}
+      /\ ROL.mp{1} = Adv_LCDH.Or.mp{2}
+      /\ gy{2} = g^eph_key{2} /\
+     (!ROL.bad_flag{1} <=> ROL.bad_key{1} \notin ROL.mp{1})/\
+       ROL.bad_key{1} = g^(priv_key{1}*eph_key{1})).
+      call (_ :  ROL.mp{1} = Adv_LCDH.Or.mp{2} /\ (!ROL.bad_flag{1} <=> ROL.bad_key{1} \notin ROL.mp{1})).
+      proc.
+     sp.
+     if.
+     progress.
+     auto.
+     progress.
+     smt.
+smt.     auto.
+     progress.
+     smt.
+smt.     progress.
+     auto.
+     progress.
+       smt.
+trivial. trivial.  
 qed.    
+        
 
 local lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r/2%r | <=
     Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
@@ -769,9 +806,25 @@ local lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 
       rewrite -(G2_Pr &m). rewrite  (IND_CPA_G1 &m).
       apply (G1_G2 &m).
   qed.
-  
+
+  print INDCPA_LCDH_equiv.
   end section.
   
+  print INDCPA_LCDH_equiv.
+  
+lemma IND_CPA (Adv <: ADV{RO, Adv_LCDH }) &m :
+  (forall (RO <: RO{Adv}),
+   islossless RO.f => islossless Adv(RO).choose) =>
+  (forall (RO <: RO{Adv}),
+   islossless RO.f => islossless Adv(RO).guess) =>
+  `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r / 2%r | <=
+  Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res]. 
+proof.
+move => Adv_choose_ll Adv_guess_ll.
+print INDCPA_LCDH_equiv.
+apply (INDCPA_LCDH_equiv &m).
+qed.
+
       
     
     
