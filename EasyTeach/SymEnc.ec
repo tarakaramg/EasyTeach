@@ -683,8 +683,63 @@ axiom dtext_ll : is_lossless dtext.
        seq 6: (ROL.bad_key = pub_key ^ eph_key /\ pub_key = g^priv_key).
        rnd.
        auto.
+       progress.
+       auto.
+       call(_ : true).
+       apply Adv_choose_ll.
+       progress.
+       proc.
+       sp.
+       if.
+       auto.
+       progress.
+       apply dtext_lossless.
+       auto.
+       wp.
+       auto.
+       progress.
+       apply lossless.
+       admit. (* admit *)
+       if.
+       call(_ :true).
+       apply Adv_guess_ll.
+       proc.
+       sp.
+       if.
+       auto.
+       progress.
+       apply dtext_lossless.
+       auto.
+       auto.     
+       progress.
+       apply dtext_lossless.
+       admit. (*admit *)
+       progress.
+       sp.
+       call(_ : true).
+       apply Adv_guess_ll.
+       proc.
+       sp.
+       if.
+       auto.
+       progress.
+       apply dtext_lossless.
+       auto.
+       auto.
+       progress.
+       admit. (* admit *)
+       auto.
+       progress.
+       auto.
+       admit. (* admit *)
+       trivial.
+       trivial.
+       trivial.
+   qed.
+   
+   
      
-
+     
      
      
 
