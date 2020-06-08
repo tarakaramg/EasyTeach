@@ -8,7 +8,6 @@
 prover ["Z3"].  (* no SMT solvers *)
 
 require import AllCore Distr DBool FSet List SmtMap.
-require import StdOrder.  import RealOrder.
 require import Cyclic_group_prime.
 require import Prime_field.
 import Dgf_q.
@@ -417,24 +416,27 @@ local module GAME_2 = {
        }.
 
 
-local  module GAME_3 (Adv : ADV) = {
+local module GAME_3  = {
 
-           module A = Adv(ROL)
+    module A = Adv(ROL)
 
-             proc main() : bool = {
-             var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var y : gf_q;
-             var priv_key : priv; var pub_key : pub;
-             ROL.init();
-             priv_key  <$ dgf_q;
-             y <$ dgf_q;
-             pub_key <- g ^ priv_key;
-             (x1, x2) <@ A.choose(pub_key);
-               x3 <$ dtext;
-               b' <- A.guess(g ^ y, x3);
-               b <$ {0,1};
-             return (b=b');
-           }
- }.
+      proc main() : bool = {
+      var b, b' : bool; var x1, x2, x3 : text; var c : cipher; var eph_key : gf_q;
+      var priv_key : priv; var pub_key : pub;
+      ROL.mp <- empty;  (* empty map *)
+      ROL.bad_flag <- false;
+      priv_key  <$ dgf_q;
+      eph_key <$ dgf_q;
+      pub_key <- g ^ priv_key;             
+      ROL.bad_key <- pub_key ^ eph_key;
+      (x1, x2) <@ A.choose(pub_key);
+        x3 <$ dtext;
+        c <- (g ^ eph_key, x3);
+        b' <- A.guess(c);
+        b <$ {0,1};
+      return (b=b');
+    }
+}.
 
 
  local lemma IND_CPA_G1 &m :
@@ -620,7 +622,71 @@ byequiv
     (_ :
       true ==> ={ROL.bad_flag} /\ ( ={ROL.bad_flag} /\ !ROL.bad_flag{1}  => ={res})):
   (ROL.bad_flag).
-    by conseq G1_G2_equiv. trivial.  
-    progress. trivial.
-smt(). smt(). trivial.
+    by conseq G1_G2_equiv.  
+    progress.
+    progress.
+    smt().
+    smt().
+    trivial.
 qed.
+
+
+
+axiom dtext_fu : is_full dtext.
+axiom dtext_uni : is_uniform dtext.
+axiom dtext_ll : is_lossless dtext.
+
+  
+ local lemma G2_G3_equiv &m :
+     Pr[GAME_2.main() @ &m : res] = Pr[GAME_3.main() @ &m : res].
+     proof.
+       byequiv.
+       proc.
+       sp.
+       seq 4 4: (={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key, pub_key} /\
+       ROL.mp{1} = empty /\ pub_key{1} = g ^ priv_key{1} /\
+       ROL.bad_key{1} = pub_key{1} ^ eph_key{1}).
+       auto.
+       seq 1 1: (={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key,pub_key,x1,x2, glob Adv}).
+       call (_ : ={ROL.mp, ROL.bad_key, ROL.bad_flag}). 
+       proc.
+       sim.
+       progress.
+       swap{2} 4 -3.
+       seq 3 3: ( ={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key, glob Adv,pub_key,b,x1,x2,c}).    
+       wp.
+     rnd( fun x => x3{1} ++ x).     
+       auto.
+       progress.
+       smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
+       apply dtext_uni.
+       apply dtext_fu.
+       apply dtext_fu.
+       apply dtext_fu.
+       smt(xor_associative xor_commutative xor_with_0 xor_with_itself).
+       admit.     (* ADMIT FIX ME *)
+       call(_ : ={ROL.mp, ROL.bad_flag, ROL.bad_key}).
+       proc.
+       sim.
+       auto.
+       progress.
+       progress.
+   qed.
+
+   
+ local lemma G2_G3 &m : Pr[GAME_1.main() @ &m: res] =  1%r/2%r.
+     proof.
+       byphoare.
+       proc.
+       sp.
+       (*swap 6 -1.*)
+       seq 6: (ROL.bad_key = pub_key ^ eph_key /\ pub_key = g^priv_key).
+       rnd.
+       auto.
+     
+
+     
+     
+
+
+     
