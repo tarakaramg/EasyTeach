@@ -210,12 +210,14 @@ print fset.
 search fdom.
 
 module Adv_LCDH (Adv : ADV)  : ADV_LCDH = {
-  (* LCDH adversary, takes g^x and g^y, return list of g^xy guesses using ADV choose and guess procedures*)
+  (* LCDH adversary, takes g^x and g^y, return list of g^xy guesses 
+using ADV choose and guess procedures*)
  module Or : RO = {
 
  var mp : (group, text) fmap
    proc init() : unit = {
- mp <- empty;  (* empty map *)
+     
+  (* empty map *)
 
    }
        proc f(x : group) : text = {
@@ -233,7 +235,7 @@ module Adv_LCDH (Adv : ADV)  : ADV_LCDH = {
 
      proc main (pub_key : pub, gy : group) : group fset = {
      var x1, x2, x3 : text; var b : bool; var c : cipher;
-     Or.init();
+      Or.mp <- empty;
      (x1, x2) <@ A.choose(pub_key);
        x3 <$ dtext;
      c <- (gy ,x3);
@@ -721,7 +723,8 @@ axiom dtext_ll : is_lossless dtext.
        sim.
        progress.
        swap{2} 4 -3.
-       seq 3 3: ( ={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key, eph_key, glob Adv,pub_key,b,x1,x2,c}).    
+       seq 3 3: ( ={ROL.mp, ROL.bad_flag, ROL.bad_key, priv_key,
+       eph_key, glob Adv,pub_key,b,x1,x2,c}).    
        wp.
      rnd( fun x => (b{1} ? x1{1} : x2{1}) ++ x).     
        auto.
@@ -748,23 +751,20 @@ local lemma G3_LCDH_equiv &m : Pr[GAME_3.main() @ &m : ROL.bad_flag]
       proc.
       sp.
       inline*.
-seq 5 6: (={priv_key, eph_key, pub_key}).    
-      call(_ : true).
+seq 5 6: (={priv_key, eph_key, pub_key, x1, x2, glob Adv} /\ ROL.mp{1} = Adv_LCDH.Or.mp{2} /\ Adv_LCDH.Or.mp{2} = empty). 
+      call(_ :  ROL.mp{1} = Adv_LCDH.Or.mp{2}).
       proc.
       sp.
-      sim.
+    sim.
+      if.    
       progress.
-      admit.
-      admit.
-      admit.
-      trivial.
-      trivial.
+
+    
 qed.    
 
 local lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r/2%r | <=
     Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
-    proof.
-        
+    proof.  
       rewrite -(G3_LCDH_equiv &m). rewrite -(G2_G3_bad &m).
       rewrite -(G2_Pr &m). rewrite  (IND_CPA_G1 &m).
       apply (G1_G2 &m).
