@@ -764,6 +764,15 @@ qed.
 local lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r/2%r | <=
     Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
     proof.
+        
+      rewrite -(G3_LCDH_equiv &m). rewrite -(G2_G3_bad &m).
+      rewrite -(G2_Pr &m). rewrite  (IND_CPA_G1 &m).
+      apply (G1_G2 &m).
+  qed.
+  
+  end section.
+  
+      
     
     
 
