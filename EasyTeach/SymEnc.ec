@@ -17,6 +17,9 @@ const zero:text.
 
 op ( ++ ) : text -> text -> text.
 op dtext : text distr.
+axiom dtext_fu : is_full dtext.
+axiom dtext_uni : is_uniform dtext.
+axiom dtext_ll : is_lossless dtext.
 
 axiom xor_commutative : forall(x : text, y : text), x ++ y = y ++  x.
 axiom xor_associative (x,y,z : text) : (x ++ y) ++ z = x ++ (y ++ z).
@@ -624,11 +627,6 @@ byequiv
     smt().
     smt().
 qed.
-
-axiom dtext_fu : is_full dtext.
-axiom dtext_uni : is_uniform dtext.
-axiom dtext_ll : is_lossless dtext.
-
   
  local lemma G2_G3_equiv &m :
      Pr[GAME_2.main() @ &m : res] = Pr[GAME_3.main() @ &m : res].
@@ -806,7 +804,7 @@ local lemma G3_LCDH_equiv &m : Pr[GAME_3.main() @ &m : ROL.bad_flag]
 lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r/2%r | <=
     Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
     proof.  
-      rewrite -(G3_LCDH_equiv &m)  -(G2_G3_bad &m) -(G2_Pr &m) (IND_CPA_G1 &m) (G1_G2 &m).
+      rewrite -(G3_LCDH_equiv &m)  -(G2_G3_bad &m) -(G2_Pr &m) (IND_CPA_G1 &m)(G1_G2 &m).
   qed.
 
   end section.
