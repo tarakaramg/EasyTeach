@@ -803,16 +803,12 @@ local lemma G3_LCDH_equiv &m : Pr[GAME_3.main() @ &m : ROL.bad_flag]
        trivial.  
  qed.    
  
-
 lemma INDCPA_LCDH_equiv &m : `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r/2%r | <=
     Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res].
     proof.  
-      rewrite -(G3_LCDH_equiv &m). rewrite -(G2_G3_bad &m).
-      rewrite -(G2_Pr &m). rewrite  (IND_CPA_G1 &m).
-      apply (G1_G2 &m).
+      rewrite -(G3_LCDH_equiv &m)  -(G2_G3_bad &m) -(G2_Pr &m) (IND_CPA_G1 &m) (G1_G2 &m).
   qed.
 
-  print INDCPA_LCDH_equiv.
   end section.
   
   print INDCPA_LCDH_equiv.
@@ -822,14 +818,11 @@ lemma IND_CPA (Adv <: ADV{RO, Adv_LCDH }) &m :
    islossless RO.f => islossless Adv(RO).choose) =>
   (forall (RO <: RO{Adv}),
     islossless RO.f => islossless Adv(RO).guess) =>
-      is_full dtext =>
-    is_uniform dtext =>
-    is_lossless dtext =>
   `| Pr[IND_CPA(Enc, Adv).main() @ &m : res] - 1%r / 2%r | <=
   Pr[Game_LCDH(Adv_LCDH(Adv)).main() @ &m : res]. 
 proof.
-move => Adv_choose_ll Adv_guess_ll dtext_fu dtext_u dtext_ll.
-apply (INDCPA_LCDH_equiv  Adv Adv_choose_ll  Adv_guess_ll dtext_fu dtext_u dtext_ll &m).
+move => Adv_choose_ll Adv_guess_ll.
+apply (INDCPA_LCDH_equiv  Adv Adv_choose_ll  Adv_guess_ll &m).
 qed.
 
       
