@@ -185,7 +185,7 @@ op nosmt dec_port (u : univ) : port option =
       end
   end.
 
-clone EPDP as EPDP_Univ_Port with (* port *)
+cloneenv EPDP as EPDP_Univ_Port with (* port *)
   type orig <- port, type enc <- univ,
   op enc = enc_port, op dec = dec_port
 proof *.
@@ -1063,3 +1063,10 @@ module DummyAdv : FUNC = {
 }.
 
 end DummyAdversary.
+
+
+  (* Added by Ram for broadcast*)
+
+type port_list = port list.
+
+op is_in( x : port_list, y : port_list) : bool = 

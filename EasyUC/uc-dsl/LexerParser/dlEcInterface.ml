@@ -17,9 +17,9 @@ module EP = EcParsetree
 open DlTypes
 (* -------------------------------------------------------------------- *)
 
-let ecTheoriesDir = Filename.dirname "/usr/local/share/easycrypt/easycrypt/theories"
+let ecTheoriesDir = Filename.dirname "/Users/r/.opam/easycrypt/.opam-switch/sources/easycrypt.dev/theories"
 
-let ucTheoriesDir = Filename.dirname "/Users/stough/projs/easycrypt/uc/easy-uc-git/uc-dsl"
+let ucTheoriesDir = Filename.dirname "/Users/r/easyteach/easyUC/uc-dsl"
 
 let checkmode = {
               EcCommands.cm_checkall  = false; 

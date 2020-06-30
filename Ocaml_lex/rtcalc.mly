@@ -22,7 +22,7 @@ line:     NEWLINE		{ }
 ;
 
 exp:      NUM			{ $1 }
-        | exp exp PLUS		{ $1 +. $2 }
+        | exp PLUS exp		{ $1 +. $3 }
         | exp exp MINUS		{ $1 -. $2 }
         | exp exp MULTIPLY		{ $1 *. $2 }
         | exp exp DIVIDE		{ $1 /. $2 }
