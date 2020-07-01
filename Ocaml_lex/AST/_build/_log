@@ -1,0 +1,4 @@
+### Starting build.
+# Target: lexer.mll, tags: { extension:mll, file:lexer.mll, lexer, ocaml, ocamllex, quiet }
+/Users/r/.opam/easycrypt-aprhl/bin/ocamllex.opt -q lexer.mll # cached
+# Compilation successful.
